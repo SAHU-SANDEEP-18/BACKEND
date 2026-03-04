@@ -16,8 +16,6 @@ async function identifyUser(req,res,next) {
             message: "Invalid Token",
         });
     }
-    req.user = decoded;
-    next();
 }
 
 module.exports = {
