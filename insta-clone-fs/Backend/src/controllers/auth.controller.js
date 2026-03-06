@@ -61,7 +61,7 @@ async function loginController(req,res){
     $or:[
       {username: username},{email: email}
     ]
-  })
+  }).select("+password")
 
   if(!user){
     return res.status(409).json({
