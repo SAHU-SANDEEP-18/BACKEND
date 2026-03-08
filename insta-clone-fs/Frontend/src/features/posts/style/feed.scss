@@ -1,0 +1,85 @@
+.feed-page{
+    padding: 1rem;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+
+    .feed{
+        max-width: 500px;
+        width: 100%;
+
+        .posts{
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+
+            .post{
+                display: flex;
+                flex-direction: column;
+                gap: 1rem;
+                width: 100%;
+                object-fit: cover;
+                border-radius: 0.5rem;
+                border: 2px solid white;
+                padding: 1rem;
+
+                .user{
+                    border: 2px solid wheat;
+                    border-radius: 1rem;
+                    padding: 0.5rem;
+                    display: flex;
+                    gap: 0.5rem;
+                    align-items: center;
+
+                    .img-wrapper{
+                        border-radius: 50%;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        border: 3px solid rgba(255,0,0,0);
+                        background: conic-gradient(from 45deg,red,green,yellow,red) border-box;
+                    }
+                    img{
+                        
+                        width: 3rem;
+                        aspect-ratio: 1/1;
+                        border-radius: 50%;
+                    }
+                }
+
+                .icons{
+
+                    .left{
+                        display: flex;
+                        gap: 0.5rem;
+                    }
+                    display: flex;
+                    justify-content: space-between;
+                    svg{
+                        width: 1.2rem;
+                        aspect-ratio: 1/1;
+                        color: white;
+                    }
+                    button{
+                        background-color: transparent;
+                        border: none;
+                        outline: none;
+                    }
+                }
+
+                img{
+                    border-radius: 1rem;
+                    width: 100%;
+                }
+            }
+            .bottom{
+                .caption{
+                    border: 2px solid wheat;
+                    border-radius: 0.5rem;
+                    padding: 0.5rem;
+                }
+            }
+        }
+    }
+}
