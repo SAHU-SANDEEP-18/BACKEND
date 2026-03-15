@@ -1,25 +1,24 @@
-const { ImageKit } = require("@imagekit/nodejs/client.js");
+const ImageKit = require("@imagekit/nodejs");
 const postModel = require("../models/post.model");
-const { toFile } = require("@imagekit/nodejs");
 const jwt = require("jsonwebtoken");
-const likeModel = require("../models/like.model")
+const likeModel = require("../models/like.model");
 
-const imageKit = new ImageKit({
-  privateKey: process.env.IMAGEKIT_PRIVATE_KEY,
-});
+// const imageKit = new ImageKit({
+//   publicKey: process.env.IMAGEKIT_PUBLIC_KEY || "dummy",
+//   privateKey: process.env.IMAGEKIT_PRIVATE_KEY,
+//   urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT || "https://ik.imagekit.io/dummy",
+// });
 
 async function createPostController(req, res) {
-
-
-  const file = await imageKit.files.upload({
-    file: await toFile(Buffer.from(req.file.buffer), "file"),
-    fileName: "Test",
-    folder: "insta-clone",
-  });
+  // const file = await imageKit.upload({
+  //   file: req.file.buffer,
+  //   fileName: "Test",
+  //   folder: "insta-clone",
+  // });
 
   const post = await postModel.create({
     caption: req.body.caption,
-    imgUrl: file.url,
+    imgUrl: "dummy_url", // file.url,
     user: req.user.id,
   });
 
@@ -30,7 +29,6 @@ async function createPostController(req, res) {
 }
 
 async function getPostController(req, res) {
-
   const userId = req.user.id;
 
   const posts = await postModel.find({
@@ -44,7 +42,6 @@ async function getPostController(req, res) {
 }
 
 async function getPostDetails(req, res) {
-
   const userId = req.user.id;
   const postId = req.params.postId;
 
@@ -70,36 +67,69 @@ async function getPostDetails(req, res) {
   });
 }
 
-async function likePostController(req,res) {
-  const username = req.user.username
-  const postId = req.params.postId
+async function likePostController(req, res) {
+  const username = req.user.username;
+  const postId = req.params.postId;
 
-  const post = await postModel.findById(postId) 
+  const post = await postModel.findById(postId);
 
-  if(!post){
+  if (!post) {
     return res.status(404).json({
-      message:"Post not found."
-    })
+      message: "Post not found.",
+    });
   }
 
   const like = await likeModel.create({
-    post:postId,
+    post: postId,
+    user: username,
+  });
+
+  res.status(200).json({
+    message: "Post liked successfully.",
+    like,
+  });
+}
+
+async function unlikePostController(req,res){
+  const postId = req.params.postId
+  const username = req.user.username
+
+  const isLiked = await likeModel.findOne({
+    post: postId,
     user:username
   })
 
-  res.status(200).json({
-    message:"Post liked successfully.",
-    like
+  if(!isLiked){
+    return res.status(400).json({
+      message:"Post didn't like"
+    })
+  }
+
+  await likeModel.findOneAndDelete({_id:isLiked._id})
+  return res.status(200).json({
+    message:"post unliked successfully"
   })
 }
 
-async function getFeedController(req,res) {
-  const posts = await postModel.find().populate("user")
+async function getFeedController(req, res) {
+  const user = req.user;
+
+  const posts = await Promise.all(
+    (await postModel.find().populate("user").lean()).map(async (post) => {
+      const isLiked = await likeModel.findOne({
+        user: user.username,
+        post: post._id,
+      });
+      post.isLiked = isLiked;
+
+      return post;
+    }),
+  );
 
   res.status(200).json({
-    message:"posts fetched successfully",
-    posts
-  })
+    message: "posts fetched successfully",
+    posts,
+  });
 }
 
 module.exports = {
@@ -107,5 +137,6 @@ module.exports = {
   getPostController,
   getPostDetails,
   likePostController,
-  getFeedController
+  getFeedController,
+  unlikePostController
 };

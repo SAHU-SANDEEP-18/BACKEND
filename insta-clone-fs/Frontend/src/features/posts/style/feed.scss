@@ -2,7 +2,9 @@
     padding: 1rem;
     display: flex;
     justify-content: center;
-    align-items: flex-start;
+    align-items: center;
+    padding-bottom: 10rem;
+    flex-direction: column;
 
     .feed{
         max-width: 500px;
@@ -49,13 +51,18 @@
                 }
 
                 .icons{
+                    display: flex;
+                    justify-content: space-between;
 
                     .left{
                         display: flex;
                         gap: 0.5rem;
                     }
-                    display: flex;
-                    justify-content: space-between;
+
+                    .like{
+                        color: red;
+                    }
+
                     svg{
                         width: 1.2rem;
                         aspect-ratio: 1/1;
