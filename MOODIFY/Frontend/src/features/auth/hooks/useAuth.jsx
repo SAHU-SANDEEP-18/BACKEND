@@ -29,14 +29,12 @@ export const useAuth = () => {
 
   async function handleLogout() {
     setLoading(true);
-    const data = await logout();
-    setuser(data.user);
+    await logout();
+    setuser(null);
     setLoading(false);
   }
 
-  useEffect(()=>{
-    handleGetMe()
-  },[])
+
 
   return {
     user,

@@ -1,0 +1,41 @@
+.navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 2rem;
+  background: linear-gradient(90deg, #232526 0%, #414345 100%);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+}
+
+.navbar-brand h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  margin: 0;
+  color: #ff7e5f;
+}
+
+.navbar-links {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+// .logout-btn {
+//   background: linear-gradient(90deg, #ff7e5f 0%, #feb47b 100%);
+//   color: #fff;
+//   border: none;
+//   padding: 0.5rem 1.5rem;
+//   border-radius: 20px;
+//   font-size: 1rem;
+//   font-weight: 600;
+//   cursor: pointer;
+//   box-shadow: 0 2px 8px rgba(255,126,95,0.15);
+//   transition: background 0.2s, transform 0.2s;
+// }
+
+// .logout-btn:hover {
+//   background: linear-gradient(90deg, #feb47b 0%, #ff7e5f 100%);
+//   transform: translateY(-2px) scale(1.04);
+// }
