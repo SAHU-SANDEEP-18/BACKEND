@@ -1,7 +1,8 @@
 import React, { useEffect } from 'react'
 import { RouterProvider } from 'react-router'
 import { router } from './app.routers'
-import {  useAuth } from '../features/auth/hook/useAuth'
+import { useAuth } from '../features/auth/hook/useAuth'
+import { AppToastContainer } from '../components/CustomToast'
 
 const App = () => {
   const auth = useAuth()
@@ -11,7 +12,9 @@ const App = () => {
   },[])
 
   return (
-    <RouterProvider router={router} /> 
+    <AppToastContainer>
+      <RouterProvider router={router} />
+    </AppToastContainer>
   )
 }
 

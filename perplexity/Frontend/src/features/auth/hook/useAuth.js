@@ -41,7 +41,7 @@ export function useAuth() {
         const data = await getMe()
         dispatch(setUser(data.user))
     } catch (error) {
-        dispatch(setError(error.response?.data?.message || "Failed to fetch user"))
+        // Silently fail on unauthorized - user not logged in
     } finally {
         dispatch(setInitialized(true))
     }

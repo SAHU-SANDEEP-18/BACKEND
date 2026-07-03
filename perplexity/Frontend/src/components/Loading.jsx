@@ -1,16 +1,67 @@
-import React from 'react'
+import React from "react";
+import { useSelector } from "react-redux";
+import { THEMES } from "../config/themes";
 
-const Loading = ({ message = 'Loading...' }) => {
+const Loading = ({ message = "Loading..." }) => {
+  const themeKey = useSelector((state) => state.theme?.theme || "teal");
+  const t = THEMES[themeKey] || THEMES.teal;
+
   return (
-    <section className="min-h-screen bg-zinc-950 px-4 py-10 text-zinc-100">
-      <div className="mx-auto flex min-h-[85vh] w-full max-w-md items-center justify-center">
-        <div className="flex flex-col items-center gap-4 rounded-3xl border border-zinc-700/60 bg-zinc-900/80 p-8 shadow-2xl shadow-black/40">
-          <div className="h-16 w-16 rounded-full border-4 border-t-transparent border-[#31b8c6] animate-spin" />
-          <p className="text-base font-medium text-zinc-100">{message}</p>
+    <section
+      style={{
+        minHeight: "100vh",
+        background: t.bg,
+        color: t.textOn,
+        padding: "1rem 1rem 2.5rem",
+      }}
+    >
+      <div
+        style={{
+          margin: "0 auto",
+          minHeight: "85vh",
+          width: "100%",
+          maxWidth: "28rem",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "1rem",
+            borderRadius: "1.5rem",
+            border: `1px solid ${t.primary}33`,
+            background: `${t.sidebar}CC`,
+            padding: "2rem",
+            boxShadow: `0 20px 45px ${t.primary}22`,
+          }}
+        >
+          <div
+            style={{
+              height: "4rem",
+              width: "4rem",
+              borderRadius: "999px",
+              border: `4px solid ${t.primary}33`,
+              borderTopColor: t.primary,
+              animation: "spin 1s linear infinite",
+            }}
+          />
+          <p style={{ fontSize: "1rem", fontWeight: 500, color: t.textOn }}>
+            {message}
+          </p>
         </div>
       </div>
-    </section>
-  )
-}
 
-export default Loading
+      <style>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+    </section>
+  );
+};
+
+export default Loading;
