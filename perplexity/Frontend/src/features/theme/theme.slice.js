@@ -1,9 +1,11 @@
 import { createSlice } from '@reduxjs/toolkit';
 
+const allowedThemes = ['teal', 'green', 'orange', 'mono'];
+
 const getInitialTheme = () => {
   if (typeof window === 'undefined') return 'teal';
   const stored = window.localStorage.getItem('app-theme');
-  return stored === 'teal' || stored === 'green' || stored === 'orange' ? stored : 'teal';
+  return allowedThemes.includes(stored) ? stored : 'teal';
 };
 
 const themeSlice = createSlice({

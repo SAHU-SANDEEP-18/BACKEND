@@ -1,47 +1,53 @@
-import React, { useState } from 'react'
-import { Link, useNavigate, Navigate } from 'react-router'
-import { useAuth } from '../hook/useAuth'
-import { useSelector } from 'react-redux'
-import Loading from '../../../components/Loading'
-import { THEMES } from '../../../config/themes'
+import React, { useState } from "react";
+import { Link, useNavigate, Navigate } from "react-router";
+import { useAuth } from "../hook/useAuth";
+import { useSelector } from "react-redux";
+import Loading from "../../../components/Loading";
+import { THEMES } from "../../../config/themes";
+import PortalButton from "../../../components/Portalbutton";
 
 const Register = () => {
-  const [username, setUsername] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-  const user = useSelector((state) => state.auth.user)
-  const loading = useSelector((state) => state.auth.loading)
-  const error = useSelector((state) => state.auth.error)
-  const theme = useSelector((state) => state.theme.theme)
-  const t = THEMES[theme] || THEMES.teal
+  const user = useSelector((state) => state.auth.user);
+  const loading = useSelector((state) => state.auth.loading);
+  const error = useSelector((state) => state.auth.error);
+  const theme = useSelector((state) => state.theme.theme);
+  const t = THEMES[theme] || THEMES.teal;
 
-  const { handleRegister } = useAuth()
-  const navigate = useNavigate()
+  const { handleRegister } = useAuth();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
+    e.preventDefault();
 
-    const result = await handleRegister({ username, email, password })
+    const result = await handleRegister({ username, email, password });
     if (result?.success) {
-      navigate('/verify-email')
+      navigate("/verify-email");
     }
-  }
+  };
 
   if (!loading && user) {
-    return <Navigate to="/" replace />
+    return <Navigate to="/" replace />;
   }
 
   if (loading) {
-    return <Loading message="Creating your account..." />
+    return <Loading message="Creating your account..." />;
   }
 
   return (
-    <section className="min-h-screen px-4 py-10 text-zinc-100 sm:px-6 lg:px-8" style={{ backgroundColor: t.bg }}>
+    <section
+      className="min-h-screen px-4 py-10 text-zinc-100 sm:px-6 lg:px-8"
+      style={{ backgroundColor: t.bg }}
+    >
       <div className="mx-auto flex min-h-[85vh] w-full max-w-5xl items-center justify-center">
         <div className="w-full max-w-md rounded-2xl border border-[#31b8c6]/40 bg-zinc-900/70 p-8 shadow-2xl shadow-black/50 backdrop-blur">
           <h1 className="text-3xl font-bold text-[#31b8c6]">Create account</h1>
-          <p className="mt-2 text-sm text-zinc-300">Register with your username, email, and password.</p>
+          <p className="mt-2 text-sm text-zinc-300">
+            Register with your username, email, and password.
+          </p>
 
           <form onSubmit={handleSubmit} className="mt-8 space-y-5">
             {error && (
@@ -50,7 +56,10 @@ const Register = () => {
               </div>
             )}
             <div>
-              <label htmlFor="username" className="mb-2 block text-sm font-medium text-zinc-200">
+              <label
+                htmlFor="username"
+                className="mb-2 block text-sm font-medium text-zinc-200"
+              >
                 Username
               </label>
               <input
@@ -65,7 +74,10 @@ const Register = () => {
             </div>
 
             <div>
-              <label htmlFor="email" className="mb-2 block text-sm font-medium text-zinc-200">
+              <label
+                htmlFor="email"
+                className="mb-2 block text-sm font-medium text-zinc-200"
+              >
                 Email
               </label>
               <input
@@ -80,7 +92,10 @@ const Register = () => {
             </div>
 
             <div>
-              <label htmlFor="password" className="mb-2 block text-sm font-medium text-zinc-200">
+              <label
+                htmlFor="password"
+                className="mb-2 block text-sm font-medium text-zinc-200"
+              >
                 Password
               </label>
               <input
@@ -94,25 +109,31 @@ const Register = () => {
               />
             </div>
 
-            <button
-              type="submit"
-              className="w-full rounded-lg px-4 py-3 font-semibold transition focus:outline-none"
-              style={{ backgroundColor: t.primary, color: t.textOn }}
-            >
-              Register
-            </button>
+            <PortalButton
+              text="REGISTER"
+              bgColor={t.primary}
+              arrowBg={t.dark}
+              textColor={t.textOn}
+              arrowColor={t.textOn}
+              dividerColor="rgba(255,255,255,0.25)"
+              width="100%"
+              onClick={handleSubmit}
+            />
           </form>
 
           <p className="mt-6 text-center text-sm text-zinc-300">
-            Already have an account?{' '}
-            <Link to="/login" className="font-semibold text-[#31b8c6] transition hover:text-[#45c7d4]">
+            Already have an account?{" "}
+            <Link
+              to="/login"
+              className="font-semibold text-[#31b8c6] transition hover:text-[#45c7d4]"
+            >
               Login
             </Link>
           </p>
         </div>
       </div>
     </section>
-  )
-}
+  );
+};
 
-export default Register
+export default Register;

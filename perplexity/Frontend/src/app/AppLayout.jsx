@@ -11,7 +11,7 @@ const AppLayout = () => {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: t.bg, color: t.textOn, position: 'relative' }}>
       <ThemeSwitcher />
-      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+      <div className="w-full">
         <Outlet />
       </div>
     </div>

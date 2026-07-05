@@ -23,4 +23,12 @@ export const THEMES = {
     sidebar: '#1e150a',
     name: 'Ember',
   },
+  mono: {
+    primary: '#f8fafc',
+    dark: '#e5e7eb',
+    textOn: '#000000',
+    bg: '#000000',
+    sidebar: '#111111',
+    name: 'Black & White',
+  },
 };
