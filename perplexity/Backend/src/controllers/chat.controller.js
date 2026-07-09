@@ -3,12 +3,13 @@ import chatModel from "../models/chat.model.js";
 import messageModel from "../models/message.model.js";
 
 export async function sendMessage(req, res) {
-  const { message, chat: chatID } = req.body;
+  const { message, chat: chatId } = req.body;
 
   let title = null,
     chat = null;
+  const activeChatId = chatId || null;
 
-  if (!chatID) {
+  if (!activeChatId) {
     title = await generateChatTitle(message);
 
     chat = await chatModel.create({
@@ -17,24 +18,24 @@ export async function sendMessage(req, res) {
     });
   }
 
-  const userMessage = await messageModel.create({
-    chat: chatID || chat._id,
+  await messageModel.create({
+    chat: activeChatId || chat._id,
     content: message,
     role: "user",
   });
 
-  const messages = await messageModel.find({ chat: chatID });
+  const messages = await messageModel.find({ chat: activeChatId || chat._id });
   const result = await generateResponse(messages);
 
   const aiMessage = await messageModel.create({
-    chat: chatID || chat._id,
+    chat: activeChatId || chat._id,
     content: result,
     role: "ai",
   });
 
   res.status(201).json({
     title,
-    chat,
+    chat: chat || { _id: activeChatId, title: "Existing Chat" },
     aiMessage,
   });
 }
@@ -53,7 +54,7 @@ export async function getChats(req, res) {
 export async function getMessages(req, res) {
   const { chatId } = req.params;
 
-  const chat = await chatModel.find({
+  const chat = await chatModel.findOne({
     _id: chatId,
     user: req.user.id,
   });
@@ -64,9 +65,9 @@ export async function getMessages(req, res) {
     });
   }
 
-  const messages = await chatModel.find({
+  const messages = await messageModel.find({
     chat: chatId,
-  });
+  }).sort({ createdAt: 1 });
 
   res.status(201).json({
     message: "Chats retrieved successfully",

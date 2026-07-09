@@ -1,9 +1,12 @@
-import React, { useEffect, useState } from 'react'
-import { useSelector } from 'react-redux'
+import React, { useEffect, useRef, useState, useCallback } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import { useChat } from '../hook/useChat'
 import { THEMES } from '../../../config/themes'
+import { setcurrentChatId } from '../chat.slice'
+import { setTheme } from '../../theme/theme.slice'
+import ReactMarkdown from 'react-markdown'
 
-// SVG Icons
+// ─── SVG Icons ───────────────────────────────────────────────────────
 const Icons = {
   sparkles: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5z"/><path d="M5 3l.75 2.25L8 6l-2.25.75L5 9l-.75-2.25L2 6l2.25-.75z"/><path d="M19 15l.75 2.25L22 18l-2.25.75L19 21l-.75-2.25L16 18l2.25-.75z"/></svg>,
   message:  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,
@@ -18,6 +21,9 @@ const Icons = {
   clip:     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>,
   mic:      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>,
   arrowUp:  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>,
+  menu:     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>,
+  close:    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+  plus:     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
   pencil:   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>,
   code:     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>,
   bulb:     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="9" y1="18" x2="15" y2="18"/><line x1="10" y1="22" x2="14" y2="22"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0018 8 6 6 0 006 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 018.91 14"/></svg>,
@@ -26,50 +32,195 @@ const Icons = {
   book:     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>,
 }
 
+const THEME_OPTIONS = [
+  { key: 'teal',   color: '#31B8C6' },
+  { key: 'green',  color: '#AED934' },
+  { key: 'orange', color: '#FDAB69' },
+]
+
 const NAV_ITEMS = [
-  { icon: 'message',  label: 'Chats',   key: 'chats' },
-  { icon: 'compass',  label: 'Explore', key: 'explore' },
-  { icon: 'folder',   label: 'Files',   key: 'files' },
-  { icon: 'plug',     label: 'Plugins', key: 'plugins' },
+  { icon: 'message', label: 'Chats',   key: 'chats' },
+  { icon: 'compass', label: 'Explore', key: 'explore' },
+  { icon: 'folder',  label: 'Files',   key: 'files' },
+  { icon: 'plug',    label: 'Plugins', key: 'plugins' },
 ]
 
 const SUGGESTIONS = [
-  { icon: 'pencil', label: 'Write',       desc: 'Draft emails, docs, proposals' },
-  { icon: 'code',   label: 'Code',        desc: 'Debug, review, or generate' },
-  { icon: 'bulb',   label: 'Brainstorm',  desc: 'Ideas, plans, strategies' },
-  { icon: 'chart',  label: 'Analyze',     desc: 'Data, reports, summaries' },
-  { icon: 'lang',   label: 'Translate',   desc: 'Any language, any tone' },
-  { icon: 'book',   label: 'Learn',       desc: 'Explain any topic simply' },
+  { icon: 'pencil', label: 'Write',      desc: 'Draft emails, docs, proposals' },
+  { icon: 'code',   label: 'Code',       desc: 'Debug, review, or generate' },
+  { icon: 'bulb',   label: 'Brainstorm', desc: 'Ideas, plans, strategies' },
+  { icon: 'chart',  label: 'Analyze',    desc: 'Data, reports, summaries' },
+  { icon: 'lang',   label: 'Translate',  desc: 'Any language, any tone' },
+  { icon: 'book',   label: 'Learn',      desc: 'Explain any topic simply' },
 ]
 
-const MOCK_CHATS = {
-  pinned: [
-    { id: 1, title: 'Project planning', preview: "Let's map out priorities first", time: '2 min ago' },
-  ],
-  today: [
-    { id: 2, title: 'API integration help', preview: 'Axios vs fetch debate', time: '1 hr ago' },
-    { id: 3, title: 'Redux slice cleanup', preview: 'chatSlice replyTo reducer', time: '3 hr ago' },
-  ],
-  yesterday: [
-    { id: 4, title: 'Login UI review', preview: 'Portal button diagonal fix', time: 'Yesterday' },
-    { id: 5, title: 'Toast component', preview: 'Custom toastify theme', time: 'Yesterday' },
-  ],
-}
+// ─── IconEl ──────────────────────────────────────────────────────────
+const IconEl = ({ name, size = 18, color = 'currentColor' }) => (
+  <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color, width: size, height: size, flexShrink: 0 }}>
+    {Icons[name]}
+  </span>
+)
 
+// ─── Sidebar ─────────────────────────────────────────────────────────
+const Sidebar = ({ t, theme, dispatch, chatList, currentChatId, activeNav, setActiveNav, onSelectChat, onNewChat, onClose }) => (
+  <div style={{ display: 'flex', height: '100%' }}>
+
+    {/* Icon Rail */}
+    <div style={{ width: 56, backgroundColor: t.sidebar, borderRight: '0.5px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '16px 0', gap: 4 }}>
+      {/* Logo */}
+      <div style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: t.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14, flexShrink: 0 }}>
+        <IconEl name="sparkles" size={16} color={t.textOn} />
+      </div>
+
+      {/* Nav items */}
+      {NAV_ITEMS.map((item) => (
+        <button key={item.key} onClick={() => setActiveNav(item.key)} aria-label={item.label}
+          style={{ position: 'relative', width: 40, height: 40, borderRadius: 10, background: activeNav === item.key ? `${t.primary}22` : 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {activeNav === item.key && (
+            <span style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', width: 3, height: 20, backgroundColor: t.primary, borderRadius: '0 3px 3px 0' }} />
+          )}
+          <IconEl name={item.icon} size={18} color={activeNav === item.key ? t.primary : 'rgba(255,255,255,0.3)'} />
+        </button>
+      ))}
+
+      <div style={{ flex: 1 }} />
+
+      {/* Theme switcher dots */}
+      {THEME_OPTIONS.map((opt) => (
+        <button key={opt.key} onClick={() => dispatch(setTheme(opt.key))} aria-label={`${opt.key} theme`}
+          style={{
+            width: theme === opt.key ? 20 : 14,
+            height: theme === opt.key ? 20 : 14,
+            borderRadius: '50%',
+            backgroundColor: opt.color,
+            border: theme === opt.key ? '2px solid #fff' : '2px solid transparent',
+            cursor: 'pointer',
+            padding: 0,
+            transition: 'all 0.2s',
+            boxShadow: theme === opt.key ? `0 0 8px ${opt.color}99` : 'none',
+            marginBottom: 4,
+            flexShrink: 0,
+          }}
+        />
+      ))}
+
+      {/* Settings */}
+      <button aria-label="Settings"
+        style={{ width: 40, height: 40, borderRadius: 10, background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 6 }}>
+        <IconEl name="settings" size={18} color="rgba(255,255,255,0.3)" />
+      </button>
+    </div>
+
+    {/* Chat list panel */}
+    <div style={{ width: 220, backgroundColor: t.sidebar, borderRight: '0.5px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 12px 10px' }}>
+        <span style={{ fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.8)' }}>Chats</span>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <button onClick={onNewChat} aria-label="New chat"
+            style={{ width: 26, height: 26, borderRadius: 7, backgroundColor: `${t.primary}22`, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <IconEl name="plus" size={14} color={t.primary} />
+          </button>
+          {onClose && (
+            <button onClick={onClose} aria-label="Close drawer"
+              style={{ width: 26, height: 26, borderRadius: 7, backgroundColor: 'rgba(255,255,255,0.06)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <IconEl name="close" size={14} color="rgba(255,255,255,0.5)" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Search */}
+      <div style={{ margin: '0 12px 10px', display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderRadius: 8, background: 'rgba(255,255,255,0.04)', border: '0.5px solid rgba(255,255,255,0.07)' }}>
+        <IconEl name="search" size={13} color="rgba(255,255,255,0.25)" />
+        <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.2)' }}>Search...</span>
+      </div>
+
+      {/* Chat list */}
+      <div style={{ flex: 1, overflowY: 'auto' }}>
+        {chatList.length ? chatList.map((chat) => (
+          <div key={chat.id}
+            onClick={() => { onSelectChat(chat.id); onClose?.() }}
+            style={{
+              padding: '8px 12px', cursor: 'pointer',
+              borderLeft: `2px solid ${currentChatId === chat.id ? t.primary : 'transparent'}`,
+              background: currentChatId === chat.id ? `${t.primary}12` : 'transparent',
+              transition: 'background 0.15s',
+            }}
+            onMouseEnter={(e) => { if (currentChatId !== chat.id) e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
+            onMouseLeave={(e) => { if (currentChatId !== chat.id) e.currentTarget.style.background = 'transparent' }}
+          >
+            <div style={{ fontSize: 12, color: currentChatId === chat.id ? '#fff' : 'rgba(255,255,255,0.65)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {chat.title || 'New Chat'}
+            </div>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.28)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 2 }}>
+              {chat.messages?.[chat.messages.length - 1]?.content?.slice(0, 40) || 'Start a conversation'}
+            </div>
+            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.18)', marginTop: 1 }}>
+              {chat.lastUpdated ? new Date(chat.lastUpdated).toLocaleString() : 'Just now'}
+            </div>
+          </div>
+        )) : (
+          <div style={{ padding: 12, fontSize: 12, color: 'rgba(255,255,255,0.3)', textAlign: 'center', marginTop: 16 }}>
+            No chats yet.<br />
+            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)' }}>Start a new conversation</span>
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+)
+
+// ─── Dashboard ────────────────────────────────────────────────────────
 const Dashboard = () => {
-  const { initializeSocketConnection } = useChat()
-  const theme = useSelector((state) => state.theme.theme)
-  const user = useSelector((state) => state.auth.user)
+  const dispatch = useDispatch()
+  const { initializeSocketConnection, handleSendMessage, handleGetChats, handleGetMessages } = useChat()
+
+  const theme         = useSelector((state) => state.theme.theme)
+  const user          = useSelector((state) => state.auth.user)
+  const chats         = useSelector((state) => state.chat.chats || {})
+  const currentChatId = useSelector((state) => state.chat.currentChatId)
+  const isLoading     = useSelector((state) => state.chat.isLoading)
   const t = THEMES[theme] || THEMES.teal
 
-  const [activeNav, setActiveNav] = useState('chats')
-  const [activeChat, setActiveChat] = useState(1)
-  const [message, setMessage] = useState('')
+  const [activeNav, setActiveNav]   = useState('chats')
+  const [message, setMessage]       = useState('')
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const messagesEndRef = useRef(null)
 
+  // ── Init: socket + chats ──
   useEffect(() => {
     initializeSocketConnection()
+    void handleGetChats()
   }, [])
 
+  // ── Restore currentChatId from localStorage on reload ──
+  useEffect(() => {
+    const saved = localStorage.getItem('nexus_currentChatId')
+    if (saved) dispatch(setcurrentChatId(saved))
+  }, [dispatch])
+
+  // ── Persist currentChatId ──
+  useEffect(() => {
+    if (currentChatId) {
+      localStorage.setItem('nexus_currentChatId', currentChatId)
+    } else {
+      localStorage.removeItem('nexus_currentChatId')
+    }
+  }, [currentChatId])
+
+  // ── Load messages when chat selected and empty ──
+  useEffect(() => {
+    if (currentChatId && chats[currentChatId] && !chats[currentChatId]?.messages?.length) {
+      void handleGetMessages(currentChatId)
+    }
+  }, [currentChatId, chats])
+
+  // ── Scroll to bottom ──
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [chats, currentChatId])
+
+  // ── Greeting ──
   const getGreeting = () => {
     const h = new Date().getHours()
     if (h < 12) return 'Good morning'
@@ -77,211 +228,262 @@ const Dashboard = () => {
     return 'Good evening'
   }
 
-  // username fix — try multiple fields
-  const userName =
-    user?.name?.split(' ')[0] ||
-    user?.username?.split(' ')[0] ||
-    user?.firstName ||
-    user?.email?.split('@')[0] ||
-    'there'
+  const userName = user?.name?.split(' ')[0] || user?.username?.split(' ')[0] || user?.firstName || user?.email?.split('@')[0] || 'there'
 
-  const initials = userName.slice(0, 2).toUpperCase()
-
-  const IconEl = ({ name, size = 18, color = 'currentColor' }) => (
-    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color, width: size, height: size, flexShrink: 0 }}>
-      {Icons[name]}
-    </span>
+  const chatList = Object.values(chats).sort((a, b) =>
+    (b.lastUpdated || '').localeCompare(a.lastUpdated || '')
   )
 
+  const selectedChat     = currentChatId ? chats[currentChatId] : null
+  const selectedMessages = selectedChat?.messages || []
+
+  // ── Handlers ──
+  const handleSelectChat = useCallback(async (chatId) => {
+    dispatch(setcurrentChatId(chatId))
+    if (!chats[chatId]?.messages?.length) {
+      await handleGetMessages(chatId)
+    }
+  }, [chats, dispatch, handleGetMessages])
+
+  const handleNewChat = useCallback(() => {
+    dispatch(setcurrentChatId(null))
+    setMessage('')
+  }, [dispatch])
+
+  const handleSend = useCallback(async () => {
+    if (!message.trim() || isLoading) return
+    const text = message.trim()
+    setMessage('')
+    await handleSendMessage({ message: text, chatId: currentChatId })
+  }, [message, isLoading, currentChatId, handleSendMessage])
+
+  const sidebarProps = {
+    t, theme, dispatch, chatList, currentChatId,
+    activeNav, setActiveNav,
+    onSelectChat: handleSelectChat,
+    onNewChat: handleNewChat,
+  }
+
+  // ── Markdown component map ──
+  const mdComponents = {
+    p:          ({ children }) => <p style={{ margin: '0 0 8px', lineHeight: 1.6, fontSize: 13 }}>{children}</p>,
+    code:       ({ inline, children }) => inline
+      ? <code style={{ backgroundColor: 'rgba(255,255,255,0.12)', padding: '2px 6px', borderRadius: 4, fontFamily: 'monospace', fontSize: 12 }}>{children}</code>
+      : <pre style={{ backgroundColor: 'rgba(0,0,0,0.35)', padding: 12, borderRadius: 8, overflowX: 'auto', margin: '8px 0' }}><code style={{ fontFamily: 'monospace', fontSize: 12, color: '#e2e8f0' }}>{children}</code></pre>,
+    ul:         ({ children }) => <ul style={{ paddingLeft: 20, margin: '4px 0' }}>{children}</ul>,
+    ol:         ({ children }) => <ol style={{ paddingLeft: 20, margin: '4px 0' }}>{children}</ol>,
+    li:         ({ children }) => <li style={{ margin: '3px 0', fontSize: 13, lineHeight: 1.5 }}>{children}</li>,
+    h1:         ({ children }) => <h1 style={{ fontSize: 18, fontWeight: 600, margin: '10px 0 4px', color: '#fff' }}>{children}</h1>,
+    h2:         ({ children }) => <h2 style={{ fontSize: 16, fontWeight: 600, margin: '8px 0 4px', color: '#fff' }}>{children}</h2>,
+    h3:         ({ children }) => <h3 style={{ fontSize: 14, fontWeight: 600, margin: '6px 0 4px', color: '#fff' }}>{children}</h3>,
+    strong:     ({ children }) => <strong style={{ color: t.primary, fontWeight: 600 }}>{children}</strong>,
+    em:         ({ children }) => <em style={{ color: 'rgba(255,255,255,0.75)', fontStyle: 'italic' }}>{children}</em>,
+    blockquote: ({ children }) => <blockquote style={{ borderLeft: `3px solid ${t.primary}`, paddingLeft: 10, margin: '8px 0', color: 'rgba(255,255,255,0.6)', fontStyle: 'italic' }}>{children}</blockquote>,
+    a:          ({ href, children }) => <a href={href} target="_blank" rel="noreferrer" style={{ color: t.primary, textDecoration: 'underline' }}>{children}</a>,
+  }
+
   return (
-    <div className="flex overflow-hidden" style={{ height: '100vh', backgroundColor: t.bg }}>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', backgroundColor: t.bg }}>
 
-      {/* ── Icon Rail ── */}
-      <div
-        className="flex flex-col items-center py-4 gap-1 flex-shrink-0"
-        style={{ width: 56, backgroundColor: t.sidebar, borderRight: `0.5px solid rgba(255,255,255,0.06)` }}
-      >
-        <div
-          className="flex items-center justify-center rounded-xl mb-4 flex-shrink-0"
-          style={{ width: 32, height: 32, backgroundColor: t.primary, color: t.textOn }}
-        >
-          <IconEl name="sparkles" size={16} color={t.textOn} />
-        </div>
-
-        {NAV_ITEMS.map((item) => (
-          <button
-            key={item.key}
-            onClick={() => setActiveNav(item.key)}
-            aria-label={item.label}
-            style={{
-              position: 'relative', width: 40, height: 40, borderRadius: 10,
-              background: activeNav === item.key ? `${t.primary}22` : 'transparent',
-              border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            {activeNav === item.key && (
-              <span style={{
-                position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)',
-                width: 3, height: 20, backgroundColor: t.primary, borderRadius: '0 3px 3px 0',
-              }} />
-            )}
-            <IconEl name={item.icon} size={18} color={activeNav === item.key ? t.primary : 'rgba(255,255,255,0.3)'} />
-          </button>
-        ))}
-
-        <div style={{ flex: 1 }} />
-
-        <button
-          aria-label="Settings"
-          style={{ width: 40, height: 40, borderRadius: 10, background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <IconEl name="settings" size={18} color="rgba(255,255,255,0.3)" />
-        </button>
-
-        <div
-          className="flex items-center justify-center rounded-full text-xs font-medium cursor-pointer mt-1 flex-shrink-0"
-          style={{ width: 30, height: 30, backgroundColor: t.primary, color: t.textOn, fontSize: 11 }}
-        >
-          {initials}
-        </div>
+      {/* ── Desktop sidebar ── */}
+      <div style={{ display: 'none' }} className="md:flex" id="desktop-sidebar">
+        <Sidebar {...sidebarProps} onClose={null} />
       </div>
+      <style>{`@media (min-width: 768px) { #desktop-sidebar { display: flex !important; } } #mobile-overlay, #mobile-drawer { display: none; } @media (max-width: 767px) { #mobile-overlay, #mobile-drawer { display: block; } }`}</style>
 
-      {/* ── Chat List ── */}
+      {/* ── Mobile drawer overlay ── */}
       <div
-        className="flex flex-col flex-shrink-0"
-        style={{ width: 220, backgroundColor: t.sidebar, borderRight: `0.5px solid rgba(255,255,255,0.06)` }}
+        id="mobile-overlay"
+        onClick={() => setDrawerOpen(false)}
+        style={{
+          position: 'fixed', inset: 0,
+          backgroundColor: 'rgba(0,0,0,0.6)',
+          zIndex: 40,
+          backdropFilter: 'blur(2px)',
+          opacity: drawerOpen ? 1 : 0,
+          pointerEvents: drawerOpen ? 'auto' : 'none',
+          transition: 'opacity 0.3s ease',
+        }}
+      />
+
+      {/* ── Mobile drawer ── */}
+      <div
+        id="mobile-drawer"
+        style={{
+          position: 'fixed', top: 0, left: 0, bottom: 0,
+          zIndex: 50,
+          transform: drawerOpen ? 'translateX(0)' : 'translateX(-100%)',
+          transition: 'transform 0.3s cubic-bezier(0.4,0,0.2,1)',
+        }}
       >
-        <div className="flex items-center justify-between px-3 pt-4 pb-3">
-          <span style={{ fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.8)' }}>Chats</span>
-          <button
-            aria-label="New chat"
-            style={{ width: 26, height: 26, borderRadius: 7, backgroundColor: `${t.primary}22`, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          >
-            <IconEl name="edit" size={14} color={t.primary} />
-          </button>
-        </div>
-
-        <div
-          className="flex items-center gap-2 mx-3 mb-2 px-2 py-1.5 rounded-lg"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '0.5px solid rgba(255,255,255,0.07)' }}
-        >
-          <IconEl name="search" size={13} color="rgba(255,255,255,0.25)" />
-          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.2)' }}>Search...</span>
-        </div>
-
-        <div className="flex-1 overflow-y-auto">
-          {Object.entries(MOCK_CHATS).map(([section, chats]) => (
-            <div key={section}>
-              <div style={{ padding: '8px 12px 3px', fontSize: 10, fontWeight: 500, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)' }}>
-                {section}
-              </div>
-              {chats.map((chat) => (
-                <div
-                  key={chat.id}
-                  onClick={() => setActiveChat(chat.id)}
-                  style={{
-                    padding: '8px 12px', cursor: 'pointer',
-                    borderLeft: `2px solid ${activeChat === chat.id ? t.primary : 'transparent'}`,
-                    background: activeChat === chat.id ? `${t.primary}12` : 'transparent',
-                  }}
-                >
-                  <div style={{ fontSize: 12, color: activeChat === chat.id ? '#fff' : 'rgba(255,255,255,0.65)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {chat.title}
-                  </div>
-                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.28)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 2 }}>
-                    {chat.preview}
-                  </div>
-                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.18)', marginTop: 1 }}>
-                    {chat.time}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-
-        {/* <div style={{ padding: '10px 12px', borderTop: '0.5px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: t.primary, color: t.textOn, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 500, flexShrink: 0 }}>
-            {initials}
-          </div>
-          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {user?.name || user?.username || user?.email || 'User'}
-          </span>
-          <button style={{ width: 24, height: 24, borderRadius: 6, background: 'rgba(255,255,255,0.05)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <IconEl name="dots" size={14} color="rgba(255,255,255,0.4)" />
-          </button>
-        </div> */}
+        <Sidebar {...sidebarProps} onClose={() => setDrawerOpen(false)} />
       </div>
 
       {/* ── Main ── */}
-      <div className="flex flex-col flex-1 min-w-0">
-        <div style={{ height: 48, display: 'flex', alignItems: 'center', gap: 8, padding: '0 20px', borderBottom: '0.5px solid rgba(255,255,255,0.05)', flexShrink: 0 }}>
-          <IconEl name="message" size={16} color={t.primary} />
-          <span style={{ fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.8)', flex: 1 }}>New conversation</span>
-          <button style={{ width: 28, height: 28, background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <IconEl name="share" size={15} color="rgba(255,255,255,0.25)" />
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+
+        {/* Topbar */}
+        <div style={{ height: 48, display: 'flex', alignItems: 'center', gap: 8, padding: '0 16px', borderBottom: '0.5px solid rgba(255,255,255,0.05)', flexShrink: 0 }}>
+
+          {/* Hamburger — mobile only via inline style */}
+          <button
+            onClick={() => setDrawerOpen(true)}
+            aria-label="Open menu"
+            id="hamburger-btn"
+            style={{ width: 32, height: 32, background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+          >
+            <IconEl name="menu" size={18} color="rgba(255,255,255,0.6)" />
           </button>
+          <style>{`@media (min-width: 768px) { #hamburger-btn { display: none !important; } }`}</style>
+
+          <IconEl name="message" size={16} color={t.primary} />
+          <span style={{ fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.8)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {selectedChat?.title || 'New conversation'}
+          </span>
+
+          {/* New chat button */}
+          <button onClick={handleNewChat} aria-label="New chat"
+            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 8, backgroundColor: `${t.primary}22`, border: `0.5px solid ${t.primary}44`, cursor: 'pointer', flexShrink: 0 }}>
+            <IconEl name="plus" size={13} color={t.primary} />
+            <span style={{ fontSize: 12, color: t.primary, fontWeight: 500 }}>New</span>
+          </button>
+
           <button style={{ width: 28, height: 28, background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <IconEl name="dots" size={15} color="rgba(255,255,255,0.25)" />
           </button>
         </div>
 
-        {/* Welcome */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 32px 0' }}>
-          <div style={{ width: 56, height: 56, borderRadius: 16, backgroundColor: t.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20, color: t.textOn }}>
-            <IconEl name="sparkles" size={28} color={t.textOn} />
-          </div>
-          <p style={{ fontSize: 24, fontWeight: 500, color: '#fff', margin: '0 0 6px', textAlign: 'center' }}>
-            {getGreeting()}, {userName} 👋
-          </p>
-          <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', margin: '0 0 28px', textAlign: 'center' }}>
-            What would you like to work on today?
-          </p>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, width: '100%', maxWidth: 500 }}>
-            {SUGGESTIONS.map((s) => (
-              <div
-                key={s.label}
-                style={{ padding: '12px 14px', borderRadius: 12, cursor: 'pointer', background: 'rgba(255,255,255,0.04)', border: '0.5px solid rgba(255,255,255,0.08)', transition: 'all 0.15s' }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = `${t.primary}12`; e.currentTarget.style.borderColor = `${t.primary}44` }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)' }}
-              >
-                <div style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: `${t.primary}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
-                  <IconEl name={s.icon} size={15} color={t.primary} />
+        {/* Welcome screen */}
+        {!selectedChat ? (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 24px 0', overflowY: 'auto' }}>
+            <div style={{ width: 56, height: 56, borderRadius: 16, backgroundColor: t.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+              <IconEl name="sparkles" size={28} color={t.textOn} />
+            </div>
+            <p style={{ fontSize: 22, fontWeight: 500, color: '#fff', margin: '0 0 6px', textAlign: 'center' }}>
+              {getGreeting()}, {userName} 👋
+            </p>
+            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', margin: '0 0 28px', textAlign: 'center' }}>
+              What would you like to work on today?
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8, width: '100%', maxWidth: 500 }}>
+              {SUGGESTIONS.map((s) => (
+                <div key={s.label}
+                  onClick={() => setMessage(s.label + ': ')}
+                  style={{ padding: '12px 14px', borderRadius: 12, cursor: 'pointer', background: 'rgba(255,255,255,0.04)', border: '0.5px solid rgba(255,255,255,0.08)', transition: 'all 0.15s' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = `${t.primary}12`; e.currentTarget.style.borderColor = `${t.primary}44` }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)' }}
+                >
+                  <div style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: `${t.primary}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
+                    <IconEl name={s.icon} size={15} color={t.primary} />
+                  </div>
+                  <p style={{ fontSize: 12, fontWeight: 500, color: t.primary, margin: '0 0 3px' }}>{s.label}</p>
+                  <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', margin: 0, lineHeight: 1.4 }}>{s.desc}</p>
                 </div>
-                <p style={{ fontSize: 12, fontWeight: 500, color: t.primary, margin: '0 0 3px' }}>{s.label}</p>
-                <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', margin: 0, lineHeight: 1.4 }}>{s.desc}</p>
+              ))}
+            </div>
+          </div>
+        ) : (
+          /* Chat messages */
+          <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px 0', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {selectedMessages.map((msg, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start', alignItems: 'flex-start', gap: 10 }}>
+                {/* AI avatar */}
+                {msg.role !== 'user' && (
+                  <div style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: `${t.primary}22`, border: `1px solid ${t.primary}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
+                    <IconEl name="sparkles" size={13} color={t.primary} />
+                  </div>
+                )}
+
+                <div style={{
+                  maxWidth: '75%',
+                  padding: '10px 14px',
+                  borderRadius: msg.role === 'user' ? '16px 4px 16px 16px' : '4px 16px 16px 16px',
+                  background: msg.role === 'user' ? `${t.primary}22` : 'rgba(255,255,255,0.05)',
+                  border: msg.role === 'user' ? `1px solid ${t.primary}33` : '1px solid rgba(255,255,255,0.07)',
+                  color: '#fff',
+                }}>
+                  {msg.role === 'user' ? (
+                    <p style={{ margin: 0, fontSize: 13, lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>{msg.content}</p>
+                  ) : (
+                    <ReactMarkdown components={mdComponents}>{msg.content}</ReactMarkdown>
+                  )}
+                </div>
+
+                {/* User avatar */}
+                {msg.role === 'user' && (
+                  <div style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: t.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2, fontSize: 10, fontWeight: 600, color: t.textOn }}>
+                    {userName.slice(0, 2).toUpperCase()}
+                  </div>
+                )}
               </div>
             ))}
-          </div>
-        </div>
 
-        {/* Input */}
-        <div style={{ padding: '14px 20px 16px', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderRadius: 12, background: 'rgba(255,255,255,0.05)', border: '0.5px solid rgba(255,255,255,0.09)' }}>
+            {/* Typing indicator */}
+            {isLoading && (
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <div style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: `${t.primary}22`, border: `1px solid ${t.primary}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <IconEl name="sparkles" size={13} color={t.primary} />
+                </div>
+                <div style={{ padding: '12px 16px', borderRadius: '4px 16px 16px 16px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.07)', display: 'flex', gap: 5, alignItems: 'center' }}>
+                  {[0, 1, 2].map((i) => (
+                    <div key={i} style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: t.primary, animation: `nexus-bounce 1.2s ${i * 0.2}s infinite ease-in-out` }} />
+                  ))}
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} style={{ height: 1 }} />
+          </div>
+        )}
+
+        {/* Input bar */}
+        <div style={{ padding: '12px 16px 16px', flexShrink: 0 }}>
+          <div
+            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderRadius: 12, background: 'rgba(255,255,255,0.05)', border: '0.5px solid rgba(255,255,255,0.09)', transition: 'border-color 0.2s' }}
+            onFocus={(e) => e.currentTarget.style.borderColor = `${t.primary}55`}
+            onBlur={(e)  => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.09)'}
+          >
             <input
               value={message}
               onChange={(e) => setMessage(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void handleSend() } }}
               placeholder="Ask me anything..."
               style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 13, color: '#fff', fontFamily: 'inherit' }}
             />
-            <button style={{ width: 28, height: 28, background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <button aria-label="Attach file" style={{ width: 28, height: 28, background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <IconEl name="clip" size={15} color="rgba(255,255,255,0.3)" />
             </button>
-            <button style={{ width: 28, height: 28, background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <button aria-label="Voice input" style={{ width: 28, height: 28, background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <IconEl name="mic" size={15} color="rgba(255,255,255,0.3)" />
             </button>
             <button
-              style={{ width: 32, height: 32, borderRadius: 9, backgroundColor: t.primary, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+              onClick={() => void handleSend()}
+              disabled={isLoading || !message.trim()}
+              aria-label="Send message"
+              style={{
+                width: 32, height: 32, borderRadius: 9, border: 'none', cursor: message.trim() && !isLoading ? 'pointer' : 'not-allowed',
+                backgroundColor: message.trim() && !isLoading ? t.primary : 'rgba(255,255,255,0.08)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background 0.2s',
+              }}
             >
-              <IconEl name="arrowUp" size={16} color={t.textOn} />
+              <IconEl name="arrowUp" size={16} color={message.trim() && !isLoading ? t.textOn : 'rgba(255,255,255,0.3)'} />
             </button>
           </div>
-          <p style={{ textAlign: 'center', marginTop: 8, fontSize: 11, color: 'rgba(255,255,255,0.15)' }}>
+          <p style={{ textAlign: 'center', marginTop: 6, fontSize: 11, color: 'rgba(255,255,255,0.15)' }}>
             Nexus may make mistakes. Verify important information.
           </p>
         </div>
       </div>
+
+      <style>{`
+        @keyframes nexus-bounce {
+          0%, 60%, 100% { transform: translateY(0); opacity: 0.6; }
+          30% { transform: translateY(-5px); opacity: 1; }
+        }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+      `}</style>
     </div>
   )
 }
