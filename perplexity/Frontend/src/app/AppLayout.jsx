@@ -10,7 +10,7 @@ const AppLayout = () => {
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: t.bg, color: t.textOn, position: 'relative' }}>
-      <ThemeSwitcher />
+      {/* <ThemeSwitcher /> */}
       <div className="w-full">
         <Outlet />
       </div>

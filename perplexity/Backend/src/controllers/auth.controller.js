@@ -1,6 +1,5 @@
 import userModel from "../models/user.model.js";
 import jwt from "jsonwebtoken";
-import { sendEmail } from "../services/mail.service.js";
 
 export async function register(req, res) {
   const { username, email, password } = req.body;
@@ -17,21 +16,6 @@ export async function register(req, res) {
   }
 
   const user = await userModel.create({ username, email, password });
-
-  const emailVerificationToken = jwt.sign(
-    { email: user.email },
-    process.env.JWT_SECRET,
-  );
-
-  await sendEmail({
-    to: email,
-    subject: "Welcome to our app!",
-    html: `<h1>Welcome, ${username}!</h1><p>Thank you for registering with our app. We're excited to have you on board!</p>
-    <p>Please verify your email by clicking the link below:</p>
-    <a href="http://localhost:3000/api/auth/verify-email?token=${emailVerificationToken}">Verify Email</a>
-    `,
-    text: `Welcome, ${username}! Thank you for registering with our app. We're excited to have you on board!`,
-  });
 
   res.status(201).json({
     message: "User registered successfully",
@@ -92,14 +76,6 @@ export async function login(req, res) {
       message: "Invalid email or password",
       success: false,
       err: "Incorrect password",
-    });
-  }
-
-  if (!user.verified) {
-    return res.status(400).json({
-      message: "Please verify your email before logging in",
-      success: false,
-      err: "Email not verified",
     });
   }
 

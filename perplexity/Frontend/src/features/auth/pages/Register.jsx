@@ -25,7 +25,7 @@ const Register = () => {
 
     const result = await handleRegister({ username, email, password });
     if (result?.success) {
-      navigate("/verify-email");
+      navigate("/login");
     }
   };
 

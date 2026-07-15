@@ -9,47 +9,58 @@ import {
   createnewChat,
   addNewMessage,
   setChatMessages,
+  replaceChatId,
 } from "../chat.slice";
 
 export const useChat = () => {
   const dispatch = useDispatch();
 
-  async function handleSendMessage({ message, chatId }) {
+async function handleSendMessage({ message, chatId }) {
     if (!message?.trim()) return null;
+    const trimmed = message.trim();
 
     dispatch(setLoading(true));
     dispatch(setError(null));
 
+    const isNewChat = !chatId;
+    const tempId = isNewChat ? `temp-${Date.now()}` : null;
+    const activeChatId = chatId || tempId;
+
+    // ── Optimistic: show user's message immediately, before API responds ──
+    if (isNewChat) {
+      dispatch(createnewChat({ chatId: tempId, title: "New Chat" }));
+    }
+    dispatch(
+      addNewMessage({
+        chatId: activeChatId,
+        content: trimmed,
+        role: "user",
+      })
+    );
+    dispatch(setcurrentChatId(activeChatId));
+
     try {
-      const data = await sendMessage({ message: message.trim(), chatId });
+      const data = await sendMessage({ message: trimmed, chatId });
       const createdChatId = data.chat?._id || chatId;
       const title = data.chat?.title || data.title || "New Chat";
 
-      if (createdChatId) {
-        dispatch(
-          createnewChat({
-            chatId: createdChatId,
-            title,
-          })
-        );
-        dispatch(
-          addNewMessage({
-            chatId: createdChatId,
-            content: message.trim(),
-            role: "user",
-          })
-        );
-        dispatch(
-          addNewMessage({
-            chatId: createdChatId,
-            content: data.aiMessage?.content || "",
-            role: data.aiMessage?.role || "ai",
-          })
-        );
+      let finalChatId = activeChatId;
+
+      if (isNewChat && createdChatId) {
+        dispatch(replaceChatId({ oldId: tempId, newId: createdChatId, title }));
         dispatch(setcurrentChatId(createdChatId));
+        finalChatId = createdChatId;
       }
 
-      return createdChatId;
+      dispatch(
+        addNewMessage({
+          chatId: finalChatId,
+          content: data.aiMessage?.content || "",
+          role: data.aiMessage?.role || "ai",
+        })
+      );
+
+      return finalChatId;
     } catch (error) {
       dispatch(setError(error?.response?.data?.message || "Unable to send message"));
       return null;

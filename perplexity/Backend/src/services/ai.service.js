@@ -1,6 +1,14 @@
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { ChatMistralAI } from "@langchain/mistralai";
-import { HumanMessage, SystemMessage, AIMessage } from "@langchain/core/messages";
+import {
+  HumanMessage,
+  SystemMessage,
+  AIMessage,
+  createAgent,
+  tool,
+} from "langchain";
+import * as z from "zod";
+import { searchInternet } from "./internet.service.js";
 
 const geminiModel = new ChatGoogleGenerativeAI({
   model: "gemini-2.5-flash-lite",
@@ -12,16 +20,52 @@ const mistralModel = new ChatMistralAI({
   apiKey: process.env.MISTRAL_API_KEY,
 });
 
-export async function generateResponse(messages) {
-  const response = await geminiModel.invoke(messages.map(msg=>{
-    if(msg.role == "user"){
-      return new HumanMessage(msg.content)
-    }else if (msg.role == "ai"){
-      return new AIMessage(msg.content)
-    }
-  }));
+const searchInternetTool = tool(
+  async ({ query }) => {
+    try {
+      const { results, answer } = await searchInternet(query);
 
-  return response.text;
+      if (!results?.length) return "No relevant results found.";
+
+      const formatted = results
+        .map((r, i) => `${i + 1}. ${r.title}\n${r.content}\nSource: ${r.url}`)
+        .join("\n\n");
+
+      return answer ? `${answer}\n\nSources:\n${formatted}` : formatted;
+    } catch (err) {
+      return `Search failed: ${err.message}`;
+    }
+  },
+  {
+    name: "searchInternet",
+    description:
+      "Searches the internet for up-to-date or factual information. Use ONLY when the query needs current events, real-time data, or facts outside your knowledge.",
+    schema: z.object({
+      query: z
+        .string()
+        .describe("A concise, specific search query (3-8 words)."),
+    }),
+  },
+);
+
+const agent = createAgent({
+  model: geminiModel,
+  tools: [searchInternetTool],
+  systemPrompt: "Always use the searchInternet tool for questions about current events, recent data, prices, news, or anything that may have changed after your training cutoff.",
+});
+
+export async function generateResponse(messages) {
+  const response = await agent.invoke({
+    messages: messages.map((msg) => {
+      if (msg.role == "user") {
+        return new HumanMessage(msg.content);
+      } else if (msg.role == "ai") {
+        return new AIMessage(msg.content);
+      }
+    }),
+  });
+
+  return response.messages[response.messages.length - 1].text;
 }
 
 export async function generateChatTitle(message) {
