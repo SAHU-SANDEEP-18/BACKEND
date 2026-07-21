@@ -5,6 +5,7 @@ const initialState = {
   currentChatId: null,
   isLoading: false,
   error: null,
+  aiStatus: null, // 'thinking' | 'typing' | null
 };
 
 const chatSlice = createSlice({
@@ -22,6 +23,9 @@ const chatSlice = createSlice({
     },
     setError: (state, action) => {
       state.error = action.payload;
+    },
+    setAiStatus: (state, action) => {
+      state.aiStatus = action.payload; // 'thinking' | 'typing' | null
     },
     createnewChat: (state, action) => {
       const { chatId, title } = action.payload;
@@ -46,9 +50,40 @@ const chatSlice = createSlice({
           lastUpdated: new Date().toISOString(),
         };
       }
-
       state.chats[chatId].messages.push({ content, role });
       state.chats[chatId].lastUpdated = new Date().toISOString();
+    },
+    // ── Naye streaming reducers ──
+    startStreamingMessage: (state, action) => {
+      const { chatId } = action.payload;
+      if (!state.chats[chatId]) {
+        state.chats[chatId] = {
+          id: chatId,
+          title: "New Chat",
+          messages: [],
+          lastUpdated: new Date().toISOString(),
+        };
+      }
+      state.chats[chatId].messages.push({ content: "", role: "ai", streaming: true });
+    },
+    appendStreamingChunk: (state, action) => {
+      const { chatId, chunk } = action.payload;
+      const chat = state.chats[chatId];
+      if (!chat) return;
+      const lastMsg = chat.messages[chat.messages.length - 1];
+      if (lastMsg?.role === "ai" && lastMsg.streaming) {
+        lastMsg.content += chunk;
+      }
+    },
+    finalizeStreamingMessage: (state, action) => {
+      const { chatId, content } = action.payload;
+      const chat = state.chats[chatId];
+      if (!chat) return;
+      const lastMsg = chat.messages[chat.messages.length - 1];
+      if (lastMsg?.role === "ai") {
+        if (content !== undefined) lastMsg.content = content;
+        lastMsg.streaming = false;
+      }
     },
     setChatMessages: (state, action) => {
       const { chatId, messages } = action.payload;
@@ -60,7 +95,6 @@ const chatSlice = createSlice({
           lastUpdated: new Date().toISOString(),
         };
       }
-
       state.chats[chatId].messages = messages;
       state.chats[chatId].lastUpdated = new Date().toISOString();
     },
@@ -83,8 +117,12 @@ export const {
   setcurrentChatId,
   setLoading,
   setError,
+  setAiStatus,
   createnewChat,
   addNewMessage,
+  startStreamingMessage,
+  appendStreamingChunk,
+  finalizeStreamingMessage,
   setChatMessages,
   replaceChatId,
 } = chatSlice.actions;
