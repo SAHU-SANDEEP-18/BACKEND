@@ -75,12 +75,7 @@ export const useChat = () => {
           dispatch(appendStreamingChunk({ chatId: finalChatId, chunk: event.chunk }));
         } else if (event.type === "done") {
           if (streamStarted) {
-            dispatch(
-              finalizeStreamingMessage({
-                chatId: finalChatId,
-                content: event.aiMessage?.content,
-              }),
-            );
+            dispatch(finalizeStreamingMessage({ chatId: finalChatId }));
           } else {
             // Koi chunk hi nahi aaya (edge case) — seedha final message daal do
             dispatch(

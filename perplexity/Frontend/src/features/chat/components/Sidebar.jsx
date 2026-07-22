@@ -47,21 +47,46 @@ const Sidebar = ({
         gap: 4,
       }}
     >
-      <div
-        style={{
-          width: 32,
-          height: 32,
-          borderRadius: 10,
-          backgroundColor: t.primary,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          marginBottom: 14,
-          flexShrink: 0,
-        }}
-      >
-        <IconEl name="sparkles" size={16} color={t.textOn} />
-      </div>
+      {collapsed && onToggleCollapse ? (
+        <button
+          onClick={onToggleCollapse}
+          aria-label="Expand sidebar"
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 10,
+            backgroundColor: t.primary,
+            border: "none",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            marginBottom: 14,
+            flexShrink: 0,
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={t.textOn} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <line x1="9" y1="3" x2="9" y2="21" />
+          </svg>
+        </button>
+      ) : (
+        <div
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 10,
+            backgroundColor: t.primary,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            marginBottom: 14,
+            flexShrink: 0,
+          }}
+        >
+          <IconEl name="sparkles" size={16} color={t.textOn} />
+        </div>
+      )}
 
       {NAV_ITEMS.map((item) => (
         <button
@@ -212,9 +237,31 @@ const Sidebar = ({
                 justifyContent: "center",
               }}
             >
-              <IconEl name="menu" size={14} color="rgba(255,255,255,0.5)" />
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <line x1="9" y1="3" x2="9" y2="21" />
+              </svg>
             </button>
           )}
+          {/* {onToggleCollapse && (
+            <button
+              onClick={onToggleCollapse}
+              aria-label="Collapse sidebar"
+              style={{
+                width: 26,
+                height: 26,
+                borderRadius: 7,
+                backgroundColor: "rgba(255,255,255,0.06)",
+                border: "none",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <IconEl name="menu" size={14} color="rgba(255,255,255,0.5)" />
+            </button>
+          )} */}
           {onClose && (
             <button
               onClick={onClose}

@@ -245,7 +245,7 @@ const Dashboard = () => {
             gap: 8,
             padding: "0 16px",
             borderBottom: "0.5px solid rgba(255,255,255,0.05)",
-            flexShrink: 0,
+            flexShrink: 0, 
           }}
         >
           {/* <button
