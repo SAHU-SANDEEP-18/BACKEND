@@ -6,12 +6,13 @@ const api = axios.create({
 });
 
 // Streaming version — SSE response ko manually parse karta hai
-export const sendMessageStream = async ({ message, chatId }, onEvent) => {
+export const sendMessageStream = async ({ message, chatId }, onEvent, signal) => {
   const response = await fetch("http://localhost:3000/api/chats/message", {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ message, chat: chatId }),
+    signal, // AbortController ka signal — stop button isse fetch ko cancel karega
   });
 
   if (!response.ok || !response.body) {
@@ -36,6 +37,76 @@ export const sendMessageStream = async ({ message, chatId }, onEvent) => {
       try {
         const data = JSON.parse(json);
         onEvent(data);
+      } catch (err) {
+        console.error("Failed to parse SSE chunk:", err);
+      }
+    }
+  }
+};
+
+export const regenerateMessageStream = async (chatId, onEvent, signal) => {
+  const response = await fetch(`http://localhost:3000/api/chats/${chatId}/regenerate`, {
+    method: "POST",
+    credentials: "include",
+    signal,
+  });
+
+  if (!response.ok || !response.body) {
+    throw new Error("Failed to regenerate response");
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const parts = buffer.split("\n\n");
+    buffer = parts.pop();
+
+    for (const part of parts) {
+      if (!part.startsWith("data: ")) continue;
+      try {
+        onEvent(JSON.parse(part.slice(6)));
+      } catch (err) {
+        console.error("Failed to parse SSE chunk:", err);
+      }
+    }
+  }
+};
+
+export const editMessageStream = async (chatId, messageId, content, onEvent, signal) => {
+  const response = await fetch(`http://localhost:3000/api/chats/${chatId}/messages/${messageId}`, {
+    method: "PUT",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content }),
+    signal,
+  });
+
+  if (!response.ok || !response.body) {
+    throw new Error("Failed to edit message");
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const parts = buffer.split("\n\n");
+    buffer = parts.pop();
+
+    for (const part of parts) {
+      if (!part.startsWith("data: ")) continue;
+      try {
+        onEvent(JSON.parse(part.slice(6)));
       } catch (err) {
         console.error("Failed to parse SSE chunk:", err);
       }

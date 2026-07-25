@@ -1,7 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { initializeSocketConnection } from "../service/chat.socket";
 import { useDispatch } from "react-redux";
-import { sendMessageStream, getChats, getMessages } from "../service/chat.api";
+import { sendMessageStream, regenerateMessageStream, editMessageStream, getChats, getMessages } from "../service/chat.api";
 import {
   setChats,
   setcurrentChatId,
@@ -15,10 +15,14 @@ import {
   finalizeStreamingMessage,
   setChatMessages,
   replaceChatId,
+  removeLastAiMessage,
+  truncateAfterMessage,
+  setLastUserMessageId,
 } from "../chat.slice";
 
 export const useChat = () => {
   const dispatch = useDispatch();
+  const abortControllerRef = useRef(null); // current streaming request ka controller
 
   // ── Socket init + status listeners (ek hi baar setup) ──
   useEffect(() => {
@@ -58,6 +62,9 @@ export const useChat = () => {
 
     let streamStarted = false;
 
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
       await sendMessageStream({ message: trimmed, chatId }, (event) => {
         if (event.type === "meta") {
@@ -65,6 +72,9 @@ export const useChat = () => {
             dispatch(replaceChatId({ oldId: tempId, newId: event.chatId, title: event.title }));
             dispatch(setcurrentChatId(event.chatId));
             finalChatId = event.chatId;
+          }
+          if (event.userMessageId) {
+            dispatch(setLastUserMessageId({ chatId: finalChatId, messageId: event.userMessageId }));
           }
           // Yahan bubble nahi banate — jab tak "Thinking..." chal raha hai, indicator hi dikhega
         } else if (event.type === "chunk") {
@@ -90,14 +100,113 @@ export const useChat = () => {
           dispatch(setError(event.error));
           if (streamStarted) dispatch(finalizeStreamingMessage({ chatId: finalChatId }));
         }
-      });
+      }, controller.signal);
 
       return finalChatId;
     } catch (error) {
-      dispatch(setError(error?.message || "Unable to send message"));
+      // AbortError tab aati hai jab user ne khud stop kiya — usko error mat treat karo
+      if (error.name !== "AbortError") {
+        dispatch(setError(error?.message || "Unable to send message"));
+      }
       return null;
     } finally {
       dispatch(setLoading(false));
+      abortControllerRef.current = null;
+    }
+  }
+
+  // ── Stop generation — active stream ko cancel karta hai ──
+  function handleStopGeneration() {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+  }
+
+  async function handleRegenerate(chatId) {
+    if (!chatId) return;
+
+    dispatch(setLoading(true));
+    dispatch(setError(null));
+    dispatch(removeLastAiMessage({ chatId })); // purana hata do, naya "Thinking..." indicator hi dikhega tab tak
+
+    let streamStarted = false;
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    try {
+      await regenerateMessageStream(
+        chatId,
+        (event) => {
+          if (event.type === "chunk") {
+            if (!streamStarted) {
+              dispatch(startStreamingMessage({ chatId }));
+              streamStarted = true;
+            }
+            dispatch(appendStreamingChunk({ chatId, chunk: event.chunk }));
+          } else if (event.type === "done") {
+            if (streamStarted) {
+              dispatch(finalizeStreamingMessage({ chatId }));
+            }
+          } else if (event.type === "error") {
+            dispatch(setError(event.error));
+            if (streamStarted) dispatch(finalizeStreamingMessage({ chatId }));
+          }
+        },
+        controller.signal,
+      );
+    } catch (error) {
+      if (error.name !== "AbortError") {
+        dispatch(setError(error?.message || "Unable to regenerate response"));
+      }
+    } finally {
+      dispatch(setLoading(false));
+      abortControllerRef.current = null;
+    }
+  }
+
+  async function handleEditMessage({ chatId, messageId, messageIndex, newContent }) {
+    if (!chatId || !newContent?.trim()) return;
+
+    dispatch(setLoading(true));
+    dispatch(setError(null));
+    dispatch(truncateAfterMessage({ chatId, messageIndex, newContent: newContent.trim() }));
+
+    let streamStarted = false;
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    try {
+      await editMessageStream(
+        chatId,
+        messageId,
+        newContent.trim(),
+        (event) => {
+          if (event.type === "chunk") {
+            if (!streamStarted) {
+              dispatch(startStreamingMessage({ chatId }));
+              streamStarted = true;
+            }
+            dispatch(appendStreamingChunk({ chatId, chunk: event.chunk }));
+          } else if (event.type === "done") {
+            if (streamStarted) {
+              dispatch(finalizeStreamingMessage({ chatId }));
+            }
+          } else if (event.type === "error") {
+            dispatch(setError(event.error));
+            if (streamStarted) dispatch(finalizeStreamingMessage({ chatId }));
+          }
+        },
+        controller.signal,
+      );
+    } catch (error) {
+      if (error.name !== "AbortError") {
+        dispatch(setError(error?.message || "Unable to edit message"));
+      }
+    } finally {
+      dispatch(setLoading(false));
+      abortControllerRef.current = null;
     }
   }
 
@@ -150,5 +259,8 @@ export const useChat = () => {
     handleSendMessage,
     handleGetChats,
     handleGetMessages,
+    handleStopGeneration,
+    handleRegenerate,
+    handleEditMessage,
   };
 };

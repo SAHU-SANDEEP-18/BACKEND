@@ -21,7 +21,7 @@ export async function sendMessage(req, res) {
 
   const resolvedChatId = activeChatId || chat._id;
 
-  await messageModel.create({
+  const userMessage = await messageModel.create({
     chat: resolvedChatId,
     content: message,
     role: "user",
@@ -41,6 +41,7 @@ export async function sendMessage(req, res) {
       type: "meta",
       title,
       chatId: resolvedChatId,
+      userMessageId: userMessage._id, // frontend ko bhejo taaki turant edit/regenerate kaam kare
     })}\n\n`,
   );
 
@@ -49,11 +50,23 @@ export async function sendMessage(req, res) {
 
   let fullText = "";
   let firstChunkReceived = false;
+  let clientDisconnected = false;
+  const abortController = new AbortController();
+
+  // Jab client (browser) fetch abort kare, ye event fire hota hai —
+  // isse hamare loop ko pata chalta hai ki ab chunks bhejna band karna hai,
+  // AUR abortController.abort() se Gemini ki API-call ko bhi khud cancel kar dete hain
+  req.on("close", () => {
+    clientDisconnected = true;
+    abortController.abort();
+  });
 
   try {
-    const stream = generateResponseStream(pastMessages);
+    const stream = generateResponseStream(pastMessages, abortController.signal);
 
     for await (const chunk of stream) {
+      if (clientDisconnected) break; // user ne stop kiya — loop se turant nikal jao
+
       if (!firstChunkReceived) {
         // pehla chunk aaya — matlab ab actual typing shuru
         io.to(`user:${req.user.id}`).emit("ai:typing", { chatId: resolvedChatId });
@@ -64,20 +77,27 @@ export async function sendMessage(req, res) {
       res.write(`data: ${JSON.stringify({ type: "chunk", chunk })}\n\n`);
     }
 
-    const aiMessage = await messageModel.create({
-      chat: resolvedChatId,
-      content: fullText,
-      role: "ai",
-    });
+    // Chahe pura complete hua ho ya beech mein roka gaya ho — jo bhi text bana hai wo save karo
+    if (fullText.trim()) {
+      const aiMessage = await messageModel.create({
+        chat: resolvedChatId,
+        content: fullText,
+        role: "ai",
+      });
 
-    io.to(`user:${req.user.id}`).emit("ai:done", { chatId: resolvedChatId });
-    res.write(`data: ${JSON.stringify({ type: "done", aiMessage })}\n\n`);
+      if (!clientDisconnected) {
+        io.to(`user:${req.user.id}`).emit("ai:done", { chatId: resolvedChatId });
+        res.write(`data: ${JSON.stringify({ type: "done", aiMessage })}\n\n`);
+      }
+    }
   } catch (err) {
-    console.error("Stream error:", err);
-    io.to(`user:${req.user.id}`).emit("ai:error", { chatId: resolvedChatId, error: err.message });
-    res.write(`data: ${JSON.stringify({ type: "error", error: err.message })}\n\n`);
+    if (!clientDisconnected) {
+      console.error("Stream error:", err);
+      io.to(`user:${req.user.id}`).emit("ai:error", { chatId: resolvedChatId, error: err.message });
+      res.write(`data: ${JSON.stringify({ type: "error", error: err.message })}\n\n`);
+    }
   } finally {
-    res.end();
+    if (!clientDisconnected) res.end(); // agar client already disconnect ho chuka, res.end() error dega
   }
 }
 
@@ -114,6 +134,84 @@ export async function getMessages(req, res) {
   });
 }
 
+export async function regenerateResponse(req, res) {
+  const { chatId } = req.params;
+  const io = getID();
+
+  const chat = await chatModel.findOne({ _id: chatId, user: req.user.id });
+  if (!chat) {
+    return res.status(404).json({ message: "chat not found" });
+  }
+
+  // Sabse last message dhoondo — agar wo AI ka hai, use delete karo (naya banayenge)
+  const lastMessage = await messageModel.findOne({ chat: chatId }).sort({ createdAt: -1 });
+
+  if (!lastMessage || lastMessage.role !== "ai") {
+    return res.status(400).json({ message: "No AI response to regenerate" });
+  }
+
+  await messageModel.deleteOne({ _id: lastMessage._id });
+
+  // Baaki history (jo bachi, last user-message tak) LLM ko context ke roop mein do
+  const pastMessages = await messageModel
+    .find({ chat: chatId })
+    .select("role content -_id");
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders();
+
+  io.to(`user:${req.user.id}`).emit("ai:thinking", { chatId });
+
+  let fullText = "";
+  let firstChunkReceived = false;
+  let clientDisconnected = false;
+  const abortController = new AbortController();
+
+  req.on("close", () => {
+    clientDisconnected = true;
+    abortController.abort();
+  });
+
+  try {
+    const stream = generateResponseStream(pastMessages, abortController.signal);
+
+    for await (const chunk of stream) {
+      if (clientDisconnected) break;
+
+      if (!firstChunkReceived) {
+        io.to(`user:${req.user.id}`).emit("ai:typing", { chatId });
+        firstChunkReceived = true;
+      }
+
+      fullText += chunk;
+      res.write(`data: ${JSON.stringify({ type: "chunk", chunk })}\n\n`);
+    }
+
+    if (fullText.trim()) {
+      const aiMessage = await messageModel.create({
+        chat: chatId,
+        content: fullText,
+        role: "ai",
+      });
+
+      if (!clientDisconnected) {
+        io.to(`user:${req.user.id}`).emit("ai:done", { chatId });
+        res.write(`data: ${JSON.stringify({ type: "done", aiMessage })}\n\n`);
+      }
+    }
+  } catch (err) {
+    if (!clientDisconnected) {
+      console.error("Regenerate error:", err);
+      io.to(`user:${req.user.id}`).emit("ai:error", { chatId, error: err.message });
+      res.write(`data: ${JSON.stringify({ type: "error", error: err.message })}\n\n`);
+    }
+  } finally {
+    if (!clientDisconnected) res.end();
+  }
+}
+
 export async function deleteChat(req, res) {
   const { chatId } = req.params;
 
@@ -133,4 +231,94 @@ export async function deleteChat(req, res) {
   res.status(200).json({
     message: "chat deleted successfully",
   });
+}
+
+export async function editMessage(req, res) {
+  const { chatId, messageId } = req.params;
+  const { content } = req.body;
+  const io = getID();
+
+  if (!content?.trim()) {
+    return res.status(400).json({ message: "Content is required" });
+  }
+
+  const chat = await chatModel.findOne({ _id: chatId, user: req.user.id });
+  if (!chat) {
+    return res.status(404).json({ message: "chat not found" });
+  }
+
+  const targetMessage = await messageModel.findOne({ _id: messageId, chat: chatId });
+  if (!targetMessage || targetMessage.role !== "user") {
+    return res.status(400).json({ message: "Can only edit your own messages" });
+  }
+
+  // Edited message ka content update karo
+  targetMessage.content = content.trim();
+  await targetMessage.save();
+
+  // Isके BAAD ki saari messages delete karo — purana continuation ab invalid hai
+  await messageModel.deleteMany({
+    chat: chatId,
+    createdAt: { $gt: targetMessage.createdAt },
+  });
+
+  // Ab edited-message tak ki history LLM ko do
+  const pastMessages = await messageModel
+    .find({ chat: chatId })
+    .sort({ createdAt: 1 })
+    .select("role content -_id");
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders();
+
+  io.to(`user:${req.user.id}`).emit("ai:thinking", { chatId });
+
+  let fullText = "";
+  let firstChunkReceived = false;
+  let clientDisconnected = false;
+  const abortController = new AbortController();
+
+  req.on("close", () => {
+    clientDisconnected = true;
+    abortController.abort();
+  });
+
+  try {
+    const stream = generateResponseStream(pastMessages, abortController.signal);
+
+    for await (const chunk of stream) {
+      if (clientDisconnected) break;
+
+      if (!firstChunkReceived) {
+        io.to(`user:${req.user.id}`).emit("ai:typing", { chatId });
+        firstChunkReceived = true;
+      }
+
+      fullText += chunk;
+      res.write(`data: ${JSON.stringify({ type: "chunk", chunk })}\n\n`);
+    }
+
+    if (fullText.trim()) {
+      const aiMessage = await messageModel.create({
+        chat: chatId,
+        content: fullText,
+        role: "ai",
+      });
+
+      if (!clientDisconnected) {
+        io.to(`user:${req.user.id}`).emit("ai:done", { chatId });
+        res.write(`data: ${JSON.stringify({ type: "done", aiMessage })}\n\n`);
+      }
+    }
+  } catch (err) {
+    if (!clientDisconnected) {
+      console.error("Edit-regenerate error:", err);
+      io.to(`user:${req.user.id}`).emit("ai:error", { chatId, error: err.message });
+      res.write(`data: ${JSON.stringify({ type: "error", error: err.message })}\n\n`);
+    }
+  } finally {
+    if (!clientDisconnected) res.end();
+  }
 }

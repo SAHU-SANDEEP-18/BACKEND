@@ -1,6 +1,6 @@
 import IconEl from "./IconEl";
 
-const ChatInput = ({ message, setMessage, onSend, isLoading, t }) => (
+const ChatInput = ({ message, setMessage, onSend, onStop, isLoading, t }) => (
   <div style={{ padding: "12px 16px 16px", flexShrink: 0 }}>
     <div
       style={{
@@ -66,30 +66,48 @@ const ChatInput = ({ message, setMessage, onSend, isLoading, t }) => (
       >
         <IconEl name="mic" size={15} color="rgba(255,255,255,0.3)" />
       </button>
-      <button
-        onClick={() => void onSend()}
-        disabled={isLoading || !message.trim()}
-        aria-label="Send message"
-        style={{
-          width: 32,
-          height: 32,
-          borderRadius: 9,
-          border: "none",
-          cursor: message.trim() && !isLoading ? "pointer" : "not-allowed",
-          backgroundColor: message.trim() && !isLoading ? t.primary : "rgba(255,255,255,0.08)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexShrink: 0,
-          transition: "background 0.2s",
-        }}
-      >
-        <IconEl
-          name="arrowUp"
-          size={16}
-          color={message.trim() && !isLoading ? t.textOn : "rgba(255,255,255,0.3)"}
-        />
-      </button>
+      {isLoading ? (
+        <button
+          onClick={onStop}
+          aria-label="Stop generating"
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 9,
+            border: "none",
+            cursor: "pointer",
+            backgroundColor: t.primary,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+          }}
+        >
+          {/* Chhota square icon — universal "stop" symbol */}
+          <div style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: t.textOn }} />
+        </button>
+      ) : (
+        <button
+          onClick={() => void onSend()}
+          disabled={!message.trim()}
+          aria-label="Send message"
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 9,
+            border: "none",
+            cursor: message.trim() ? "pointer" : "not-allowed",
+            backgroundColor: message.trim() ? t.primary : "rgba(255,255,255,0.08)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+            transition: "background 0.2s",
+          }}
+        >
+          <IconEl name="arrowUp" size={16} color={message.trim() ? t.textOn : "rgba(255,255,255,0.3)"} />
+        </button>
+      )}
     </div>
     <p style={{ textAlign: "center", marginTop: 6, fontSize: 11, color: "rgba(255,255,255,0.15)" }}>
       Nexus may make mistakes. Verify important information.

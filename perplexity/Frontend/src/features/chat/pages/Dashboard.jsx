@@ -15,7 +15,7 @@ import ChatInput from "../components/ChatInput";
 // ─── Dashboard ────────────────────────────────────────────────────────
 const Dashboard = () => {
   const dispatch = useDispatch();
-  const { handleSendMessage, handleGetChats, handleGetMessages } = useChat();
+  const { handleSendMessage, handleGetChats, handleGetMessages, handleStopGeneration, handleRegenerate, handleEditMessage } = useChat();
 
   const theme = useSelector((state) => state.theme.theme);
   const user = useSelector((state) => state.auth.user);
@@ -328,7 +328,23 @@ const Dashboard = () => {
             }}
           >
             {selectedMessages.map((msg, i) => (
-              <MessageBubble key={i} msg={msg} t={t} userName={userName} mdComponents={mdComponents} />
+              <MessageBubble
+                key={i}
+                msg={msg}
+                t={t}
+                userName={userName}
+                mdComponents={mdComponents}
+                isLast={i === selectedMessages.length - 1}
+                onRegenerate={() => handleRegenerate(currentChatId)}
+                onEdit={(newContent) =>
+                  handleEditMessage({
+                    chatId: currentChatId,
+                    messageId: msg._id,
+                    messageIndex: i,
+                    newContent,
+                  })
+                }
+              />
             ))}
 
             {aiStatus === "thinking" && <TypingIndicator t={t} />}
@@ -336,10 +352,18 @@ const Dashboard = () => {
           </div>
         )}
 
-        <ChatInput message={message} setMessage={setMessage} onSend={handleSend} isLoading={isLoading} t={t} />
+        <ChatInput
+          message={message}
+          setMessage={setMessage}
+          onSend={handleSend}
+          onStop={handleStopGeneration}
+          isLoading={isLoading}
+          t={t}
+        />
       </div>
 
       <style>{`
+        .message-row:hover .edit-btn { opacity: 1 !important; }
         @keyframes nexus-pulse {
           0%, 100% { transform: scale(1); opacity: 1; }
           50% { transform: scale(1.08); opacity: 0.85; }

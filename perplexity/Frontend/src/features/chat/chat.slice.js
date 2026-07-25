@@ -27,6 +27,16 @@ const chatSlice = createSlice({
     setAiStatus: (state, action) => {
       state.aiStatus = action.payload; // 'thinking' | 'typing' | null
     },
+    removeLastAiMessage: (state, action) => {
+      const { chatId } = action.payload;
+      const chat = state.chats[chatId];
+      if (!chat || !chat.messages.length) return;
+
+      const lastMsg = chat.messages[chat.messages.length - 1];
+      if (lastMsg?.role === "ai") {
+        chat.messages.pop(); // poora hata do — naya bubble sirf pehle chunk pe banega
+      }
+    },
     createnewChat: (state, action) => {
       const { chatId, title } = action.payload;
       if (!state.chats[chatId]) {
@@ -98,6 +108,31 @@ const chatSlice = createSlice({
       state.chats[chatId].messages = messages;
       state.chats[chatId].lastUpdated = new Date().toISOString();
     },
+    // Edited message ko update karo, aur uske baad ki saari messages hata do
+    truncateAfterMessage: (state, action) => {
+      const { chatId, messageIndex, newContent } = action.payload;
+      const chat = state.chats[chatId];
+      if (!chat) return;
+
+      // messageIndex tak (usko included) rakho, baaki sab hata do
+      chat.messages = chat.messages.slice(0, messageIndex + 1);
+      if (chat.messages[messageIndex]) {
+        chat.messages[messageIndex].content = newContent;
+      }
+    },
+    setLastUserMessageId: (state, action) => {
+      const { chatId, messageId } = action.payload;
+      const chat = state.chats[chatId];
+      if (!chat || !chat.messages.length) return;
+
+      // Sabse aakhri user-message dhoondo (jo abhi-abhi optimistically add hua tha)
+      for (let i = chat.messages.length - 1; i >= 0; i--) {
+        if (chat.messages[i].role === "user") {
+          chat.messages[i]._id = messageId;
+          break;
+        }
+      }
+    },
     replaceChatId: (state, action) => {
       const { oldId, newId, title } = action.payload;
       if (state.chats[oldId]) {
@@ -125,5 +160,8 @@ export const {
   finalizeStreamingMessage,
   setChatMessages,
   replaceChatId,
+  removeLastAiMessage,
+  truncateAfterMessage,
+  setLastUserMessageId
 } = chatSlice.actions;
 export default chatSlice.reducer;
