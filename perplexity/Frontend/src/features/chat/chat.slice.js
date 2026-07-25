@@ -5,7 +5,8 @@ const initialState = {
   currentChatId: null,
   isLoading: false,
   error: null,
-  aiStatus: null, // 'thinking' | 'typing' | null
+  aiStatus: null,
+  quotedText: null,
 };
 
 const chatSlice = createSlice({
@@ -51,7 +52,7 @@ const chatSlice = createSlice({
       }
     },
     addNewMessage: (state, action) => {
-      const { chatId, content, role } = action.payload;
+      const { chatId, content, role, quotedText } = action.payload;
       if (!state.chats[chatId]) {
         state.chats[chatId] = {
           id: chatId,
@@ -60,7 +61,11 @@ const chatSlice = createSlice({
           lastUpdated: new Date().toISOString(),
         };
       }
-      state.chats[chatId].messages.push({ content, role });
+      state.chats[chatId].messages.push({
+        content,
+        role,
+        quotedText: quotedText || null,
+      });
       state.chats[chatId].lastUpdated = new Date().toISOString();
     },
     // ── Naye streaming reducers ──
@@ -74,7 +79,11 @@ const chatSlice = createSlice({
           lastUpdated: new Date().toISOString(),
         };
       }
-      state.chats[chatId].messages.push({ content: "", role: "ai", streaming: true });
+      state.chats[chatId].messages.push({
+        content: "",
+        role: "ai",
+        streaming: true,
+      });
     },
     appendStreamingChunk: (state, action) => {
       const { chatId, chunk } = action.payload;
@@ -133,6 +142,26 @@ const chatSlice = createSlice({
         }
       }
     },
+    setQuotedText: (state, action) => {
+      state.quotedText = action.payload;
+    },
+    clearQuotedText: (state) => {
+      state.quotedText = null;
+    },
+
+    renameChatTitle: (state, action) => {
+      const { chatId, title } = action.payload;
+      if (state.chats[chatId]) {
+        state.chats[chatId].title = title;
+      }
+    },
+    removeChat: (state, action) => {
+      const { chatId } = action.payload;
+      delete state.chats[chatId];
+      if (state.currentChatId === chatId) {
+        state.currentChatId = null;
+      }
+    },
     replaceChatId: (state, action) => {
       const { oldId, newId, title } = action.payload;
       if (state.chats[oldId]) {
@@ -162,6 +191,10 @@ export const {
   replaceChatId,
   removeLastAiMessage,
   truncateAfterMessage,
-  setLastUserMessageId
+  setLastUserMessageId,
+  setQuotedText,
+  renameChatTitle,
+  removeChat,
+  clearQuotedText,
 } = chatSlice.actions;
 export default chatSlice.reducer;

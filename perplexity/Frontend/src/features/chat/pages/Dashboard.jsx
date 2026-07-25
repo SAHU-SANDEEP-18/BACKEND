@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useCallback, useMemo } from "react"
 import { useDispatch, useSelector } from "react-redux";
 import { useChat } from "../hook/useChat";
 import { THEMES } from "../../../config/themes";
-import { setcurrentChatId } from "../chat.slice";
+import { setcurrentChatId, setQuotedText, clearQuotedText } from "../chat.slice";
 
 import IconEl from "../components/IconEl";
 import CodeBlock from "../components/CodeBlock";
@@ -15,7 +15,16 @@ import ChatInput from "../components/ChatInput";
 // ─── Dashboard ────────────────────────────────────────────────────────
 const Dashboard = () => {
   const dispatch = useDispatch();
-  const { handleSendMessage, handleGetChats, handleGetMessages, handleStopGeneration, handleRegenerate, handleEditMessage } = useChat();
+  const {
+    handleSendMessage,
+    handleGetChats,
+    handleGetMessages,
+    handleStopGeneration,
+    handleRegenerate,
+    handleEditMessage,
+    handleRenameChat,
+    handleDeleteChat,
+  } = useChat();
 
   const theme = useSelector((state) => state.theme.theme);
   const user = useSelector((state) => state.auth.user);
@@ -23,6 +32,7 @@ const Dashboard = () => {
   const currentChatId = useSelector((state) => state.chat.currentChatId);
   const isLoading = useSelector((state) => state.chat.isLoading);
   const aiStatus = useSelector((state) => state.chat.aiStatus);
+  const quotedText = useSelector((state) => state.chat.quotedText);
   const t = THEMES[theme] || THEMES.teal;
 
   const [activeNav, setActiveNav] = useState("chats");
@@ -121,8 +131,8 @@ const Dashboard = () => {
     if (!message.trim() || isLoading) return;
     const text = message.trim();
     setMessage("");
-    await handleSendMessage({ message: text, chatId: currentChatId });
-  }, [message, isLoading, currentChatId, handleSendMessage]);
+    await handleSendMessage({ message: text, chatId: currentChatId, quotedText });
+  }, [message, isLoading, currentChatId, quotedText, handleSendMessage]);
 
   const sidebarProps = {
     t,
@@ -134,6 +144,8 @@ const Dashboard = () => {
     setActiveNav,
     onSelectChat: handleSelectChat,
     onNewChat: handleNewChat,
+    onRenameChat: handleRenameChat,
+    onDeleteChat: handleDeleteChat,
   };
 
   // ── Markdown component map — ab sirf theme (t) change hone pe naya banega ──
@@ -344,6 +356,7 @@ const Dashboard = () => {
                     newContent,
                   })
                 }
+                onReply={(text) => dispatch(setQuotedText(text))}
               />
             ))}
 
@@ -359,11 +372,14 @@ const Dashboard = () => {
           onStop={handleStopGeneration}
           isLoading={isLoading}
           t={t}
+          quotedText={quotedText}
+          onClearQuote={() => dispatch(clearQuotedText())}
         />
       </div>
 
       <style>{`
         .message-row:hover .edit-btn { opacity: 1 !important; }
+        .chat-item:hover .chat-item-actions { opacity: 1 !important; }
         @keyframes nexus-pulse {
           0%, 100% { transform: scale(1); opacity: 1; }
           50% { transform: scale(1.08); opacity: 0.85; }

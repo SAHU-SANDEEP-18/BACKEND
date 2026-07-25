@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import IconEl from "./IconEl";
@@ -11,12 +11,50 @@ const MessageBubble = React.memo(function MessageBubble({
   isLast,
   onRegenerate,
   onEdit, // (newContent) => void
+  onReply, // (selectedText) => void
 }) {
   const isUser = msg.role === "user";
   const showRegenerate = !isUser && isLast && !msg.streaming;
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(msg.content);
   const [copied, setCopied] = useState(false);
+  const [selectionPopup, setSelectionPopup] = useState(null); // { x, y, text }
+  const contentRef = useRef(null);
+
+  const handleMouseUp = () => {
+    const selection = window.getSelection();
+    const text = selection?.toString().trim();
+
+    if (!text || !contentRef.current) {
+      setSelectionPopup(null);
+      return;
+    }
+
+    // Confirm selection isی bubble ke andar hai (na ki page ke kisी aur hisse mein)
+    const anchorNode = selection.anchorNode;
+    if (!contentRef.current.contains(anchorNode)) {
+      setSelectionPopup(null);
+      return;
+    }
+
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+    const containerRect = contentRef.current.getBoundingClientRect();
+
+    setSelectionPopup({
+      x: rect.left - containerRect.left + rect.width / 2,
+      y: rect.top - containerRect.top,
+      text,
+    });
+  };
+
+  const handleReplyClick = () => {
+    if (selectionPopup?.text) {
+      onReply(selectionPopup.text);
+    }
+    window.getSelection()?.removeAllRanges();
+    setSelectionPopup(null);
+  };
 
   const handleCopy = () => {
     navigator.clipboard.writeText(msg.content);
@@ -71,7 +109,10 @@ const MessageBubble = React.memo(function MessageBubble({
 
       <div style={{ display: "flex", flexDirection: "column", alignItems: isUser ? "flex-end" : "flex-end", maxWidth: "75%" }}>
         <div
+          ref={contentRef}
+          onMouseUp={handleMouseUp}
           style={{
+            position: "relative",
             padding: "10px 14px",
             borderRadius: isUser ? "16px 4px 16px 16px" : "4px 16px 16px 16px",
             background: isUser ? `${t.primary}22` : "rgba(255,255,255,0.05)",
@@ -80,6 +121,57 @@ const MessageBubble = React.memo(function MessageBubble({
             minWidth: isEditing ? 260 : "auto",
           }}
         >
+          {/* Floating Reply popup — jahan text select hua wahi dikhta hai */}
+          {selectionPopup && (
+            <button
+              onMouseDown={(e) => e.preventDefault()} // taaki selection clear na ho click se pehle
+              onClick={handleReplyClick}
+              style={{
+                position: "absolute",
+                left: selectionPopup.x,
+                top: selectionPopup.y - 34,
+                transform: "translateX(-50%)",
+                background: "#1a1a1a",
+                border: `1px solid ${t.primary}55`,
+                borderRadius: 8,
+                padding: "5px 10px",
+                fontSize: 11,
+                color: "#fff",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+                zIndex: 10,
+                boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <IconEl name="reply" size={12} color={t.primary} />
+              Reply
+            </button>
+          )}
+
+          {/* Agar ye message khud kisi ko reply thi, quote dikhao */}
+          {msg.quotedText && (
+            <div
+              style={{
+                borderLeft: `2px solid ${t.primary}77`,
+                paddingLeft: 8,
+                marginBottom: 6,
+                fontSize: 11.5,
+                color: "rgba(255,255,255,0.5)",
+                fontStyle: "italic",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+              }}
+            >
+              {msg.quotedText}
+            </div>
+          )}
+
           {isUser ? (
             isEditing ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>

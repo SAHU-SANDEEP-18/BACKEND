@@ -6,13 +6,13 @@ const api = axios.create({
 });
 
 // Streaming version — SSE response ko manually parse karta hai
-export const sendMessageStream = async ({ message, chatId }, onEvent, signal) => {
+export const sendMessageStream = async ({ message, chatId, quotedText }, onEvent, signal) => {
   const response = await fetch("http://localhost:3000/api/chats/message", {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, chat: chatId }),
-    signal, // AbortController ka signal — stop button isse fetch ko cancel karega
+    body: JSON.stringify({ message, chat: chatId, quotedText }),
+    signal,
   });
 
   if (!response.ok || !response.body) {
@@ -121,6 +121,11 @@ export const getChats = async () => {
 
 export const getMessages = async (chatId) => {
   const response = await api.get(`/${chatId}/messages`);
+  return response.data;
+};
+
+export const renameChat = async (chatId, title) => {
+  const response = await api.put(`/${chatId}/title`, { title });
   return response.data;
 };
 

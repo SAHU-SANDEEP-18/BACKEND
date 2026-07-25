@@ -1,7 +1,15 @@
 import { useEffect, useRef } from "react";
 import { initializeSocketConnection } from "../service/chat.socket";
 import { useDispatch } from "react-redux";
-import { sendMessageStream, regenerateMessageStream, editMessageStream, getChats, getMessages } from "../service/chat.api";
+import {
+  sendMessageStream,
+  regenerateMessageStream,
+  editMessageStream,
+  getChats,
+  getMessages,
+  renameChat,
+  deleteChat,
+} from "../service/chat.api";
 import {
   setChats,
   setcurrentChatId,
@@ -18,6 +26,9 @@ import {
   removeLastAiMessage,
   truncateAfterMessage,
   setLastUserMessageId,
+  clearQuotedText,
+  renameChatTitle,
+  removeChat,
 } from "../chat.slice";
 
 export const useChat = () => {
@@ -41,7 +52,7 @@ export const useChat = () => {
     };
   }, [dispatch]);
 
-  async function handleSendMessage({ message, chatId }) {
+  async function handleSendMessage({ message, chatId, quotedText }) {
     if (!message?.trim()) return null;
     const trimmed = message.trim();
 
@@ -55,8 +66,16 @@ export const useChat = () => {
     if (isNewChat) {
       dispatch(createnewChat({ chatId: tempId, title: "New Chat" }));
     }
-    dispatch(addNewMessage({ chatId: activeChatId, content: trimmed, role: "user" }));
+    dispatch(
+      addNewMessage({
+        chatId: activeChatId,
+        content: trimmed,
+        role: "user",
+        quotedText,
+      }),
+    );
     dispatch(setcurrentChatId(activeChatId));
+    dispatch(clearQuotedText());
 
     let finalChatId = activeChatId;
 
@@ -66,41 +85,59 @@ export const useChat = () => {
     abortControllerRef.current = controller;
 
     try {
-      await sendMessageStream({ message: trimmed, chatId }, (event) => {
-        if (event.type === "meta") {
-          if (isNewChat && event.chatId) {
-            dispatch(replaceChatId({ oldId: tempId, newId: event.chatId, title: event.title }));
-            dispatch(setcurrentChatId(event.chatId));
-            finalChatId = event.chatId;
-          }
-          if (event.userMessageId) {
-            dispatch(setLastUserMessageId({ chatId: finalChatId, messageId: event.userMessageId }));
-          }
-          // Yahan bubble nahi banate — jab tak "Thinking..." chal raha hai, indicator hi dikhega
-        } else if (event.type === "chunk") {
-          if (!streamStarted) {
-            dispatch(startStreamingMessage({ chatId: finalChatId }));
-            streamStarted = true;
-          }
-          dispatch(appendStreamingChunk({ chatId: finalChatId, chunk: event.chunk }));
-        } else if (event.type === "done") {
-          if (streamStarted) {
-            dispatch(finalizeStreamingMessage({ chatId: finalChatId }));
-          } else {
-            // Koi chunk hi nahi aaya (edge case) — seedha final message daal do
+      await sendMessageStream(
+        { message: trimmed, chatId, quotedText },
+        (event) => {
+          if (event.type === "meta") {
+            if (isNewChat && event.chatId) {
+              dispatch(
+                replaceChatId({
+                  oldId: tempId,
+                  newId: event.chatId,
+                  title: event.title,
+                }),
+              );
+              dispatch(setcurrentChatId(event.chatId));
+              finalChatId = event.chatId;
+            }
+            if (event.userMessageId) {
+              dispatch(
+                setLastUserMessageId({
+                  chatId: finalChatId,
+                  messageId: event.userMessageId,
+                }),
+              );
+            }
+            // Yahan bubble nahi banate — jab tak "Thinking..." chal raha hai, indicator hi dikhega
+          } else if (event.type === "chunk") {
+            if (!streamStarted) {
+              dispatch(startStreamingMessage({ chatId: finalChatId }));
+              streamStarted = true;
+            }
             dispatch(
-              addNewMessage({
-                chatId: finalChatId,
-                content: event.aiMessage?.content || "",
-                role: "ai",
-              }),
+              appendStreamingChunk({ chatId: finalChatId, chunk: event.chunk }),
             );
+          } else if (event.type === "done") {
+            if (streamStarted) {
+              dispatch(finalizeStreamingMessage({ chatId: finalChatId }));
+            } else {
+              // Koi chunk hi nahi aaya (edge case) — seedha final message daal do
+              dispatch(
+                addNewMessage({
+                  chatId: finalChatId,
+                  content: event.aiMessage?.content || "",
+                  role: "ai",
+                }),
+              );
+            }
+          } else if (event.type === "error") {
+            dispatch(setError(event.error));
+            if (streamStarted)
+              dispatch(finalizeStreamingMessage({ chatId: finalChatId }));
           }
-        } else if (event.type === "error") {
-          dispatch(setError(event.error));
-          if (streamStarted) dispatch(finalizeStreamingMessage({ chatId: finalChatId }));
-        }
-      }, controller.signal);
+        },
+        controller.signal,
+      );
 
       return finalChatId;
     } catch (error) {
@@ -165,12 +202,23 @@ export const useChat = () => {
     }
   }
 
-  async function handleEditMessage({ chatId, messageId, messageIndex, newContent }) {
+  async function handleEditMessage({
+    chatId,
+    messageId,
+    messageIndex,
+    newContent,
+  }) {
     if (!chatId || !newContent?.trim()) return;
 
     dispatch(setLoading(true));
     dispatch(setError(null));
-    dispatch(truncateAfterMessage({ chatId, messageIndex, newContent: newContent.trim() }));
+    dispatch(
+      truncateAfterMessage({
+        chatId,
+        messageIndex,
+        newContent: newContent.trim(),
+      }),
+    );
 
     let streamStarted = false;
 
@@ -229,13 +277,37 @@ export const useChat = () => {
       dispatch(setChats(chatMap));
       return chatMap;
     } catch (error) {
-      dispatch(setError(error?.response?.data?.message || "Unable to fetch chats"));
+      dispatch(
+        setError(error?.response?.data?.message || "Unable to fetch chats"),
+      );
       return {};
     } finally {
       dispatch(setLoading(false));
     }
   }
+  async function handleRenameChat(chatId, title) {
+    if (!chatId || !title?.trim()) return;
+    try {
+      await renameChat(chatId, title.trim());
+      dispatch(renameChatTitle({ chatId, title: title.trim() }));
+    } catch (error) {
+      dispatch(
+        setError(error?.response?.data?.message || "Unable to rename chat"),
+      );
+    }
+  }
 
+  async function handleDeleteChat(chatId) {
+    if (!chatId) return;
+    try {
+      await deleteChat(chatId);
+      dispatch(removeChat({ chatId }));
+    } catch (error) {
+      dispatch(
+        setError(error?.response?.data?.message || "Unable to delete chat"),
+      );
+    }
+  }
   async function handleGetMessages(chatId) {
     if (!chatId) return null;
 
@@ -247,7 +319,9 @@ export const useChat = () => {
       dispatch(setChatMessages({ chatId, messages: data.messages || [] }));
       return data.messages || [];
     } catch (error) {
-      dispatch(setError(error?.response?.data?.message || "Unable to fetch messages"));
+      dispatch(
+        setError(error?.response?.data?.message || "Unable to fetch messages"),
+      );
       return [];
     } finally {
       dispatch(setLoading(false));
@@ -262,5 +336,7 @@ export const useChat = () => {
     handleStopGeneration,
     handleRegenerate,
     handleEditMessage,
+    handleRenameChat,
+    handleDeleteChat,
   };
 };

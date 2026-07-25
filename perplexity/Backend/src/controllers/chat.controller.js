@@ -4,7 +4,7 @@ import messageModel from "../models/message.model.js";
 import { getID } from "../sockets/server.socket.js";
 
 export async function sendMessage(req, res) {
-  const { message, chat: chatId } = req.body;
+  const { message, chat: chatId, quotedText } = req.body;
   const io = getID();
 
   let title = null,
@@ -25,11 +25,12 @@ export async function sendMessage(req, res) {
     chat: resolvedChatId,
     content: message,
     role: "user",
+    quotedText: quotedText || null,
   });
 
   const pastMessages = await messageModel
     .find({ chat: resolvedChatId })
-    .select("role content -_id");
+    .select("role content quotedText -_id");
 
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
@@ -210,6 +211,27 @@ export async function regenerateResponse(req, res) {
   } finally {
     if (!clientDisconnected) res.end();
   }
+}
+
+export async function renameChat(req, res) {
+  const { chatId } = req.params;
+  const { title } = req.body;
+
+  if (!title?.trim()) {
+    return res.status(400).json({ message: "Title is required" });
+  }
+
+  const chat = await chatModel.findOneAndUpdate(
+    { _id: chatId, user: req.user.id },
+    { title: title.trim() },
+    { new: true },
+  );
+
+  if (!chat) {
+    return res.status(404).json({ message: "chat not found" });
+  }
+
+  res.status(200).json({ message: "Chat renamed successfully", chat });
 }
 
 export async function deleteChat(req, res) {

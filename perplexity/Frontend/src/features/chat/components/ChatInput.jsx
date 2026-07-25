@@ -1,7 +1,52 @@
 import IconEl from "./IconEl";
 
-const ChatInput = ({ message, setMessage, onSend, onStop, isLoading, t }) => (
+const ChatInput = ({ message, setMessage, onSend, onStop, isLoading, t, quotedText, onClearQuote }) => (
   <div style={{ padding: "12px 16px 16px", flexShrink: 0 }}>
+    {quotedText && (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          gap: 8,
+          padding: "8px 10px",
+          marginBottom: 8,
+          borderRadius: 10,
+          background: "rgba(255,255,255,0.05)",
+          border: `1px solid ${t.primary}44`,
+          borderLeft: `2px solid ${t.primary}`,
+        }}
+      >
+        <div
+          style={{
+            flex: 1,
+            fontSize: 12,
+            color: "rgba(255,255,255,0.6)",
+            fontStyle: "italic",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+          }}
+        >
+          {quotedText}
+        </div>
+        <button
+          onClick={onClearQuote}
+          aria-label="Remove quote"
+          style={{
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+            display: "flex",
+            flexShrink: 0,
+            padding: 2,
+          }}
+        >
+          <IconEl name="close" size={13} color="rgba(255,255,255,0.4)" />
+        </button>
+      </div>
+    )}
     <div
       style={{
         display: "flex",

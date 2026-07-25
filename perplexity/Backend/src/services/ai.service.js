@@ -100,7 +100,13 @@ const agent = createAgent({
 const formatMessages = (messages) =>
   messages
     .map((msg) => {
-      if (msg.role === "user") return new HumanMessage(msg.content);
+      if (msg.role === "user") {
+        // Agar user ne kisi text ko quote karke reply kiya tha, use blockquote-format mein prepend karo
+        const content = msg.quotedText
+          ? `> ${msg.quotedText}\n\n${msg.content}`
+          : msg.content;
+        return new HumanMessage(content);
+      }
       if (msg.role === "ai") return new AIMessage(msg.content);
       return null;
     })
