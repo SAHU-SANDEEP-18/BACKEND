@@ -52,7 +52,7 @@ export const useChat = () => {
     };
   }, [dispatch]);
 
-  async function handleSendMessage({ message, chatId, quotedText }) {
+  async function handleSendMessage({ message, chatId, quotedText, attachments }) {
     if (!message?.trim()) return null;
     const trimmed = message.trim();
 
@@ -85,9 +85,7 @@ export const useChat = () => {
     abortControllerRef.current = controller;
 
     try {
-      await sendMessageStream(
-        { message: trimmed, chatId, quotedText },
-        (event) => {
+      await sendMessageStream({ message: trimmed, chatId, quotedText, attachments }, (event) => {
           if (event.type === "meta") {
             if (isNewChat && event.chatId) {
               dispatch(

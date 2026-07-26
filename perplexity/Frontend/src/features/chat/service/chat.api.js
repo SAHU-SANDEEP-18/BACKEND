@@ -6,12 +6,12 @@ const api = axios.create({
 });
 
 // Streaming version — SSE response ko manually parse karta hai
-export const sendMessageStream = async ({ message, chatId, quotedText }, onEvent, signal) => {
+export const sendMessageStream = async ({ message, chatId, quotedText, attachments }, onEvent, signal) => {
   const response = await fetch("http://localhost:3000/api/chats/message", {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, chat: chatId, quotedText }),
+    body: JSON.stringify({ message, chat: chatId, quotedText, attachments }),
     signal,
   });
 
@@ -112,6 +112,16 @@ export const editMessageStream = async (chatId, messageId, content, onEvent, sig
       }
     }
   }
+};
+
+export const uploadFiles = async (files) => {
+  const formData = new FormData();
+  files.forEach((file) => formData.append("files", file));
+
+  const response = await api.post("/upload", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return response.data.attachments;
 };
 
 export const getChats = async () => {

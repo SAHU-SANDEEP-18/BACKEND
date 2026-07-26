@@ -2,9 +2,36 @@ import { generateResponseStream, generateChatTitle } from "../services/ai.servic
 import chatModel from "../models/chat.model.js";
 import messageModel from "../models/message.model.js";
 import { getID } from "../sockets/server.socket.js";
+import { uploadToImageKit } from "../services/imagekit.service.js";
+
+export async function uploadFiles(req, res) {
+  if (!req.files?.length) {
+    return res.status(400).json({ message: "No files uploaded" });
+  }
+
+  try {
+    const attachments = await Promise.all(
+      req.files.map(async (file) => {
+        const { url, fileId } = await uploadToImageKit(file.buffer, file.originalname);
+        return {
+          url,
+          fileId,
+          name: file.originalname,
+          mimeType: file.mimetype,
+          kind: file.mimetype.startsWith("image/") ? "image" : "document",
+        };
+      }),
+    );
+
+    res.status(201).json({ attachments });
+  } catch (err) {
+    console.error("ImageKit upload failed:", err);
+    res.status(500).json({ message: "File upload failed" });
+  }
+}
 
 export async function sendMessage(req, res) {
-  const { message, chat: chatId, quotedText } = req.body;
+  const { message, chat: chatId, quotedText, attachments } = req.body;
   const io = getID();
 
   let title = null,
@@ -26,6 +53,7 @@ export async function sendMessage(req, res) {
     content: message,
     role: "user",
     quotedText: quotedText || null,
+    attachments: attachments || [],
   });
 
   const pastMessages = await messageModel

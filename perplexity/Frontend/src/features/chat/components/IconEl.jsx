@@ -20,9 +20,11 @@ import {
   LuChartBar,
   LuLanguages,
   LuBookOpen,
+  LuTrash2,
   LuCopy,
   LuCopyCheck,
-  LuTrash2,
+  LuFileText,
+  LuImage,
 } from "react-icons/lu";
 import { TfiReload } from "react-icons/tfi";
 import { VscReply } from "react-icons/vsc";
@@ -55,6 +57,8 @@ const Icons = {
   copyCheck: LuCopyCheck,
   reply: VscReply,
   trash: LuTrash2,
+  fileText: LuFileText,
+  image: LuImage,
 };
 
 const IconEl = ({ name, size = 18, color = "currentColor" }) => {

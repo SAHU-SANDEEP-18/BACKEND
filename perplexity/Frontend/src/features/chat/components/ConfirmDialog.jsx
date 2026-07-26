@@ -24,7 +24,7 @@ const ConfirmDialog = ({ title, message, onConfirm, onCancel, t }) => (
         boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
       }}
     >
-      <p style={{ margin: "0 0 6px", fontSize: 14, fontWeight: 600, color: "#fff" }}>
+      <p style={{ margin: "0 0 6px", fontSize: 14, fontWeight: 600, color: "#fff", borderLeft: `3px solid ${t.primary}`, paddingLeft: 10 }}>
         {title}
       </p>
       <p style={{ margin: "0 0 18px", fontSize: 12.5, color: "rgba(255,255,255,0.55)", lineHeight: 1.5 }}>
@@ -37,7 +37,7 @@ const ConfirmDialog = ({ title, message, onConfirm, onCancel, t }) => (
             fontSize: 12,
             padding: "7px 14px",
             borderRadius: 8,
-            border: "none",
+            border: `1px solid ${t.primary}33`,
             background: "rgba(255,255,255,0.08)",
             color: "rgba(255,255,255,0.75)",
             cursor: "pointer",

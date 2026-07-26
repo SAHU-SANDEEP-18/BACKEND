@@ -20,6 +20,18 @@ const messageSchema = new mongoose.Schema(
             type: String,
             default: null,
         },
+        attachments: {
+            type: [
+                {
+                    url: String,
+                    fileId: String, // ImageKit ka ID — future mein delete karne ke kaam aayega
+                    name: String,
+                    mimeType: String,
+                    kind: { type: String, enum: ["image", "document"] },
+                },
+            ],
+            default: [],
+        },
     },
     { timestamps: true }
 );

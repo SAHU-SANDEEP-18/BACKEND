@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState, useCallback, useMemo } from "react"
 import { useDispatch, useSelector } from "react-redux";
 import { useChat } from "../hook/useChat";
 import { THEMES } from "../../../config/themes";
-import { setcurrentChatId, setQuotedText, clearQuotedText } from "../chat.slice";
+import { setcurrentChatId, setQuotedText, clearQuotedText, setError } from "../chat.slice";
+import { uploadFiles } from "../service/chat.api";
 
 import IconEl from "../components/IconEl";
 import CodeBlock from "../components/CodeBlock";
@@ -37,6 +38,8 @@ const Dashboard = () => {
 
   const [activeNav, setActiveNav] = useState("chats");
   const [message, setMessage] = useState("");
+  const [pastedContent, setPastedContent] = useState(null);
+  const [attachedFiles, setAttachedFiles] = useState([]); // [{ file, previewUrl }]
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true); // desktop-only collapse
   const [hydrated, setHydrated] = useState(false);
@@ -128,11 +131,40 @@ const Dashboard = () => {
   }, [dispatch]);
 
   const handleSend = useCallback(async () => {
-    if (!message.trim() || isLoading) return;
-    const text = message.trim();
+    const hasPasted = !!pastedContent;
+    const hasFiles = attachedFiles.length > 0;
+    if ((!message.trim() && !hasPasted && !hasFiles) || isLoading) return;
+
+    const pastedText = pastedContent?.text || "";
+    const finalText = hasPasted
+      ? message.trim()
+        ? `${pastedText}\n\n${message.trim()}`
+        : pastedText
+      : message.trim();
+
+    const filesToUpload = attachedFiles.map((item) => item.file);
+
     setMessage("");
-    await handleSendMessage({ message: text, chatId: currentChatId, quotedText });
-  }, [message, isLoading, currentChatId, quotedText, handleSendMessage]);
+    setPastedContent(null);
+    setAttachedFiles([]);
+
+    let attachments = [];
+    if (filesToUpload.length > 0) {
+      try {
+        attachments = await uploadFiles(filesToUpload);
+      } catch (err) {
+        dispatch(setError("File upload failed. Please try again."));
+        return;
+      }
+    }
+
+    await handleSendMessage({
+      message: finalText,
+      chatId: currentChatId,
+      quotedText,
+      attachments,
+    });
+  }, [message, pastedContent, attachedFiles, isLoading, currentChatId, quotedText, handleSendMessage, dispatch]);
 
   const sidebarProps = {
     t,
@@ -374,6 +406,10 @@ const Dashboard = () => {
           t={t}
           quotedText={quotedText}
           onClearQuote={() => dispatch(clearQuotedText())}
+          pastedContent={pastedContent}
+          setPastedContent={setPastedContent}
+          attachedFiles={attachedFiles}
+          setAttachedFiles={setAttachedFiles}
         />
       </div>
 

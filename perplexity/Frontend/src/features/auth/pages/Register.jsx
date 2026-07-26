@@ -43,8 +43,11 @@ const Register = () => {
       style={{ backgroundColor: t.bg }}
     >
       <div className="mx-auto flex min-h-[85vh] w-full max-w-5xl items-center justify-center">
-        <div className="w-full max-w-md rounded-2xl border border-[#31b8c6]/40 bg-zinc-900/70 p-8 shadow-2xl shadow-black/50 backdrop-blur">
-          <h1 className="text-3xl font-bold text-[#31b8c6]">Create account</h1>
+        <div
+          className="w-full max-w-md rounded-2xl bg-zinc-900/70 p-8 shadow-2xl shadow-black/50 backdrop-blur"
+          style={{ border: `1px solid ${t.primary}66` }}
+        >
+          <h1 className="text-3xl font-bold" style={{ color: t.primary }}>Create account</h1>
           <p className="mt-2 text-sm text-zinc-300">
             Register with your username, email, and password.
           </p>
@@ -69,7 +72,16 @@ const Register = () => {
                 onChange={(event) => setUsername(event.target.value)}
                 placeholder="Enter username"
                 required
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-950/80 px-4 py-3 text-zinc-100 outline-none ring-0 transition focus:border-[#31b8c6] focus:shadow-[0_0_0_3px_rgba(49,184,198,0.25)]"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-950/80 px-4 py-3 text-zinc-100 outline-none ring-0 transition"
+                style={{ "--tw-ring-color": t.primary }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = t.primary;
+                  e.target.style.boxShadow = `0 0 0 3px ${t.primary}40`;
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = "";
+                  e.target.style.boxShadow = "";
+                }}
               />
             </div>
 
@@ -87,7 +99,15 @@ const Register = () => {
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="you@example.com"
                 required
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-950/80 px-4 py-3 text-zinc-100 outline-none ring-0 transition focus:border-[#31b8c6] focus:shadow-[0_0_0_3px_rgba(49,184,198,0.25)]"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-950/80 px-4 py-3 text-zinc-100 outline-none ring-0 transition"
+                onFocus={(e) => {
+                  e.target.style.borderColor = t.primary;
+                  e.target.style.boxShadow = `0 0 0 3px ${t.primary}40`;
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = "";
+                  e.target.style.boxShadow = "";
+                }}
               />
             </div>
 
@@ -105,7 +125,15 @@ const Register = () => {
                 onChange={(event) => setPassword(event.target.value)}
                 placeholder="Enter your password"
                 required
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-950/80 px-4 py-3 text-zinc-100 outline-none ring-0 transition focus:border-[#31b8c6] focus:shadow-[0_0_0_3px_rgba(49,184,198,0.25)]"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-950/80 px-4 py-3 text-zinc-100 outline-none ring-0 transition"
+                onFocus={(e) => {
+                  e.target.style.borderColor = t.primary;
+                  e.target.style.boxShadow = `0 0 0 3px ${t.primary}40`;
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = "";
+                  e.target.style.boxShadow = "";
+                }}
               />
             </div>
 
@@ -125,7 +153,8 @@ const Register = () => {
             Already have an account?{" "}
             <Link
               to="/login"
-              className="font-semibold text-[#31b8c6] transition hover:text-[#45c7d4]"
+              className="font-semibold transition"
+              style={{ color: t.primary }}
             >
               Login
             </Link>
