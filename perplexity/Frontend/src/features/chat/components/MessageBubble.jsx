@@ -172,6 +172,42 @@ const MessageBubble = React.memo(function MessageBubble({
             </div>
           )}
 
+          {isUser &&
+            !isEditing && msg.attachments?.length > 0 && (
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: msg.content ? 8 : 0 }}>
+                {msg.attachments.map((att, i) =>
+                  att.kind === "image" ? (
+                    <img
+                      key={i}
+                      src={att.url}
+                      alt={att.name}
+                      style={{ width: 80, height: 80, borderRadius: 8, objectFit: "cover" }}
+                    />
+                  ) : (
+                    <a
+                      key={i}
+                      href={att.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        padding: "6px 10px",
+                        borderRadius: 8,
+                        background: "rgba(255,255,255,0.08)",
+                        fontSize: 11,
+                        color: "rgba(255,255,255,0.7)",
+                        textDecoration: "none",
+                      }}
+                    >
+                      <IconEl name="fileText" size={12} color={t.primary} />
+                      {att.name}
+                    </a>
+                  ),
+                )}
+              </div>
+            )}
           {isUser ? (
             isEditing ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>

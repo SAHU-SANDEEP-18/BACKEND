@@ -58,7 +58,7 @@ export async function sendMessage(req, res) {
 
   const pastMessages = await messageModel
     .find({ chat: resolvedChatId })
-    .select("role content quotedText -_id");
+    .select("role content quotedText attachments -_id");
 
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");

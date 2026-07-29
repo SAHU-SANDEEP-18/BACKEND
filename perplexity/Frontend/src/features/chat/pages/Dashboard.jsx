@@ -40,6 +40,7 @@ const Dashboard = () => {
   const [message, setMessage] = useState("");
   const [pastedContent, setPastedContent] = useState(null);
   const [attachedFiles, setAttachedFiles] = useState([]); // [{ file, previewUrl }]
+  const [isUploading, setIsUploading] = useState(false); // file upload ke dauraan send block karne ke liye
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true); // desktop-only collapse
   const [hydrated, setHydrated] = useState(false);
@@ -133,7 +134,8 @@ const Dashboard = () => {
   const handleSend = useCallback(async () => {
     const hasPasted = !!pastedContent;
     const hasFiles = attachedFiles.length > 0;
-    if ((!message.trim() && !hasPasted && !hasFiles) || isLoading) return;
+    // isUploading check zaroori hai — dobara click/Enter se overlapping upload+send na ho
+    if ((!message.trim() && !hasPasted && !hasFiles) || isLoading || isUploading) return;
 
     const pastedText = pastedContent?.text || "";
     const finalText = hasPasted
@@ -150,12 +152,15 @@ const Dashboard = () => {
 
     let attachments = [];
     if (filesToUpload.length > 0) {
+      setIsUploading(true);
       try {
         attachments = await uploadFiles(filesToUpload);
       } catch (err) {
         dispatch(setError("File upload failed. Please try again."));
+        setIsUploading(false);
         return;
       }
+      setIsUploading(false);
     }
 
     await handleSendMessage({
@@ -164,7 +169,7 @@ const Dashboard = () => {
       quotedText,
       attachments,
     });
-  }, [message, pastedContent, attachedFiles, isLoading, currentChatId, quotedText, handleSendMessage, dispatch]);
+  }, [message, pastedContent, attachedFiles, isLoading, isUploading, currentChatId, quotedText, handleSendMessage, dispatch]);
 
   const sidebarProps = {
     t,
@@ -403,6 +408,7 @@ const Dashboard = () => {
           onSend={handleSend}
           onStop={handleStopGeneration}
           isLoading={isLoading}
+          isUploading={isUploading}
           t={t}
           quotedText={quotedText}
           onClearQuote={() => dispatch(clearQuotedText())}

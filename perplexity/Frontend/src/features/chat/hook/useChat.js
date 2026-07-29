@@ -53,8 +53,9 @@ export const useChat = () => {
   }, [dispatch]);
 
   async function handleSendMessage({ message, chatId, quotedText, attachments }) {
-    if (!message?.trim()) return null;
-    const trimmed = message.trim();
+    const hasAttachments = attachments && attachments.length > 0;
+    if (!message?.trim() && !hasAttachments) return null;
+    const trimmed = message?.trim() || "";
 
     dispatch(setLoading(true));
     dispatch(setError(null));
@@ -72,6 +73,7 @@ export const useChat = () => {
         content: trimmed,
         role: "user",
         quotedText,
+        attachments,
       }),
     );
     dispatch(setcurrentChatId(activeChatId));

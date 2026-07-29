@@ -52,7 +52,7 @@ const chatSlice = createSlice({
       }
     },
     addNewMessage: (state, action) => {
-      const { chatId, content, role, quotedText } = action.payload;
+      const { chatId, content, role, quotedText, attachments } = action.payload;
       if (!state.chats[chatId]) {
         state.chats[chatId] = {
           id: chatId,
@@ -65,6 +65,7 @@ const chatSlice = createSlice({
         content,
         role,
         quotedText: quotedText || null,
+        attachments: attachments || [],
       });
       state.chats[chatId].lastUpdated = new Date().toISOString();
     },

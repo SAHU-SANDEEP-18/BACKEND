@@ -97,30 +97,72 @@ const agent = createAgent({
   systemPrompt: SYSTEM_PROMPT,
 });
 
-const formatMessages = (messages) =>
-  messages
-    .map((msg) => {
+// ImageKit ka public-URL fetch karke base64 data-URL mein convert karta hai —
+// @langchain/google-genai ko plain HTTPS-URL nahi chahiye, base64 chahiye hota hai
+async function urlToBase64DataUrl(url) {
+  const response = await fetch(url);
+  const arrayBuffer = await response.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+  const base64 = buffer.toString("base64");
+
+  // content-type header kabhi-kabhi extra junk ke saath aata hai — jaise
+  // "image/jpeg; charset=UTF-8" (semicolon params) ya kuch CDNs duplicate
+  // header bhejte hain jise fetch() comma se join kar deta hai
+  // (e.g. "image/jpeg, image/jpeg"). Dono cases mein sirf clean
+  // "type/subtype" pattern regex se nikaal lete hain, baaki sab discard.
+  const rawContentType = response.headers.get("content-type") || "";
+  const mimeMatch = rawContentType.match(/[a-zA-Z0-9.+-]+\/[a-zA-Z0-9.+-]+/);
+  const mimeType = mimeMatch ? mimeMatch[0] : "image/jpeg";
+
+  return `data:${mimeType};base64,${base64}`;
+}
+
+const formatMessages = async (messages) => {
+  const formatted = await Promise.all(
+    messages.map(async (msg) => {
       if (msg.role === "user") {
-        // Agar user ne kisi text ko quote karke reply kiya tha, use blockquote-format mein prepend karo
-        const content = msg.quotedText
+        const textContent = msg.quotedText
           ? `> ${msg.quotedText}\n\n${msg.content}`
           : msg.content;
-        return new HumanMessage(content);
+
+        const imageAttachments = (msg.attachments || []).filter((a) => a.kind === "image");
+
+        if (imageAttachments.length > 0) {
+          const content = [{ type: "text", text: textContent || "" }];
+
+          for (const img of imageAttachments) {
+            try {
+              const dataUrl = await urlToBase64DataUrl(img.url);
+              content.push({ type: "image_url", image_url: dataUrl });
+            } catch (err) {
+              console.error("Image fetch/convert failed:", err);
+            }
+          }
+
+          return new HumanMessage({ content });
+        }
+
+        return new HumanMessage(textContent);
       }
       if (msg.role === "ai") return new AIMessage(msg.content);
       return null;
-    })
-    .filter(Boolean);
+    }),
+  );
+
+  return formatted.filter(Boolean);
+};
 
 export async function generateResponse(messages) {
-  const response = await agent.invoke({ messages: formatMessages(messages) });
+  const formatted = await formatMessages(messages);
+  const response = await agent.invoke({ messages: formatted });
   return response.messages[response.messages.length - 1].text;
 }
 
 export async function* generateResponseStream(messages, signal) {
+  const formatted = await formatMessages(messages);
   const stream = await agent.stream(
-    { messages: formatMessages(messages) },
-    { streamMode: "messages", signal }, // signal — abort hote hi LLM-call khud cancel ho jayegi, sirf forwarding nahi rukegi
+    { messages: formatted },
+    { streamMode: "messages", signal },
   );
 
   try {

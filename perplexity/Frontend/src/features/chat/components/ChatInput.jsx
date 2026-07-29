@@ -13,6 +13,7 @@ const ChatInput = ({
   onSend,
   onStop,
   isLoading,
+  isUploading,
   t,
   quotedText,
   onClearQuote,
@@ -68,6 +69,7 @@ const ChatInput = ({
   };
 
   const hasContent = message.trim() || pastedContent || attachedFiles.length > 0;
+  const sendBlocked = isUploading; // upload ke dauraan send bilkul allow nahi
 
   return (
     <div style={{ padding: "12px 16px 16px", flexShrink: 0 }}>
@@ -261,7 +263,7 @@ const ChatInput = ({
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
-              void onSend();
+              if (!sendBlocked) void onSend();
             }
           }}
           placeholder={pastedContent || attachedFiles.length > 0 ? "Add a message..." : "Ask me anything..."}
@@ -338,16 +340,16 @@ const ChatInput = ({
           </button>
         ) : (
           <button
-            onClick={() => void onSend()}
-            disabled={!hasContent}
+            onClick={() => !sendBlocked && void onSend()}
+            disabled={!hasContent || sendBlocked}
             aria-label="Send message"
             style={{
               width: 32,
               height: 32,
               borderRadius: 9,
               border: "none",
-              cursor: hasContent ? "pointer" : "not-allowed",
-              backgroundColor: hasContent ? t.primary : "rgba(255,255,255,0.08)",
+              cursor: hasContent && !sendBlocked ? "pointer" : "not-allowed",
+              backgroundColor: hasContent && !sendBlocked ? t.primary : "rgba(255,255,255,0.08)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -355,12 +357,25 @@ const ChatInput = ({
               transition: "background 0.2s",
             }}
           >
-            <IconEl name="arrowUp" size={16} color={hasContent ? t.textOn : "rgba(255,255,255,0.3)"} />
+            {isUploading ? (
+              <div
+                style={{
+                  width: 12,
+                  height: 12,
+                  border: "2px solid rgba(255,255,255,0.25)",
+                  borderTopColor: t.primary,
+                  borderRadius: "50%",
+                  animation: "nexus-spin 0.7s linear infinite",
+                }}
+              />
+            ) : (
+              <IconEl name="arrowUp" size={16} color={hasContent ? t.textOn : "rgba(255,255,255,0.3)"} />
+            )}
           </button>
         )}
       </div>
       <p style={{ textAlign: "center", marginTop: 6, fontSize: 11, color: "rgba(255,255,255,0.15)" }}>
-        Nexus may make mistakes. Verify important information.
+        {isUploading ? "Uploading attachment..." : "Nexus may make mistakes. Verify important information."}
       </p>
     </div>
   );
