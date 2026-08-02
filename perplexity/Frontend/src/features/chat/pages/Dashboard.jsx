@@ -12,6 +12,7 @@ import MessageBubble from "../components/MessageBubble";
 import TypingIndicator from "../components/TypingIndicator";
 import WelcomeScreen from "../components/WelcomeScreen";
 import ChatInput from "../components/ChatInput";
+import ShortcutsModal from "../components/ShortcutsModal";
 
 // ─── Dashboard ────────────────────────────────────────────────────────
 const Dashboard = () => {
@@ -40,8 +41,19 @@ const Dashboard = () => {
   const [message, setMessage] = useState("");
   const [pastedContent, setPastedContent] = useState(null);
   const [attachedFiles, setAttachedFiles] = useState([]); // [{ file, previewUrl }]
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false); // file upload ke dauraan send block karne ke liye
   const [drawerOpen, setDrawerOpen] = useState(false);
+const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+useEffect(() => {
+  const handleResize = () => setIsMobile(window.innerWidth < 768);
+
+  handleResize();
+
+  window.addEventListener("resize", handleResize);
+  return () => window.removeEventListener("resize", handleResize);
+}, []);
   const [sidebarOpen, setSidebarOpen] = useState(true); // desktop-only collapse
   const [hydrated, setHydrated] = useState(false);
   const [chatsLoaded, setChatsLoaded] = useState(false);
@@ -55,6 +67,38 @@ const Dashboard = () => {
       setChatsLoaded(true);
     })();
   }, []);
+
+    const handleNewChat = useCallback(() => {
+    dispatch(setcurrentChatId(null));
+    setMessage("");
+  }, [dispatch]);
+
+  // ── Global keyboard shortcuts ──
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const isMod = e.ctrlKey || e.metaKey; // Windows: Ctrl, Mac: Cmd
+
+      if (isMod && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        handleNewChat();
+      } else if (isMod && e.key === "/") {
+        e.preventDefault();
+        setShortcutsOpen((prev) => !prev);
+      } else if (isMod && e.key.toLowerCase() === "b") {
+        e.preventDefault();
+        if (window.matchMedia("(min-width: 768px)").matches) {
+          setSidebarOpen((prev) => !prev);
+        } else {
+          setDrawerOpen((prev) => !prev);
+        }
+      } else if (e.key === "Escape") {
+        setShortcutsOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleNewChat]);
 
   // ── Restore currentChatId from localStorage on reload ──
   useEffect(() => {
@@ -126,11 +170,6 @@ const Dashboard = () => {
     [chats, dispatch, handleGetMessages],
   );
 
-  const handleNewChat = useCallback(() => {
-    dispatch(setcurrentChatId(null));
-    setMessage("");
-  }, [dispatch]);
-
   const handleSend = useCallback(async () => {
     const hasPasted = !!pastedContent;
     const hasFiles = attachedFiles.length > 0;
@@ -183,6 +222,7 @@ const Dashboard = () => {
     onNewChat: handleNewChat,
     onRenameChat: handleRenameChat,
     onDeleteChat: handleDeleteChat,
+    onOpenShortcuts: () => setShortcutsOpen(true),
   };
 
   // ── Markdown component map — ab sirf theme (t) change hone pe naya banega ──
@@ -297,15 +337,8 @@ const Dashboard = () => {
             flexShrink: 0, 
           }}
         >
-          {/* <button
-            onClick={() => {
-              // Desktop pe inline-collapse toggle karo, mobile pe overlay-drawer toggle karo
-              if (window.matchMedia("(min-width: 768px)").matches) {
-                setSidebarOpen((prev) => !prev);
-              } else {
-                setDrawerOpen((prev) => !prev);
-              }
-            }}
+          <button
+            onClick={() => setDrawerOpen(true)}
             aria-label="Toggle sidebar"
             id="hamburger-btn"
             style={{
@@ -314,14 +347,14 @@ const Dashboard = () => {
               background: "transparent",
               border: "none",
               cursor: "pointer",
-              display: "flex",
+              display: isMobile ? "flex" : "none",
               alignItems: "center",
               justifyContent: "center",
               flexShrink: 0,
             }}
           >
             <IconEl name="menu" size={18} color="rgba(255,255,255,0.6)" />
-          </button> */}
+          </button>
           {/* Ab hamburger desktop pe bhi visible hai — media-query hide hata diya */}
 
           <IconEl name="message" size={16} color={t.primary} />
@@ -419,7 +452,10 @@ const Dashboard = () => {
         />
       </div>
 
+      {shortcutsOpen && <ShortcutsModal onClose={() => setShortcutsOpen(false)} t={t} />}
+
       <style>{`
+        .nexus-tooltip-wrapper:hover .nexus-tooltip-text { opacity: 1 !important; }
         .message-row:hover .edit-btn { opacity: 1 !important; }
         .chat-item:hover .chat-item-actions { opacity: 1 !important; }
         @keyframes nexus-pulse {

@@ -3,6 +3,8 @@ export const THEME_OPTIONS = [
   { key: "green", color: "#AED934" },
   { key: "orange", color: "#FDAB69" },
   { key: "mono", color: "#FFFFFF" },
+  { key: "brown", color: "#D97706" },      // Terra
+  { key: "pink", color: "#EC4899" },       // Blossom
 ];
 
 export const NAV_ITEMS = [

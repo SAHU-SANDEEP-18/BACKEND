@@ -31,4 +31,20 @@ export const THEMES = {
     sidebar: '#111111',
     name: 'Black & White',
   },
+  brown: {
+    primary: '#D97706',
+    dark: '#92400E',
+    textOn: '#ffffff',
+    bg: '#1C1917',
+    sidebar: '#292524',
+    name: 'Terra',
+  },
+  pink: {
+    primary: '#EC4899',
+    dark: '#BE185D',
+    textOn: '#ffffff',
+    bg: '#1F0A12',
+    sidebar: '#2A0F18',
+    name: 'Blossom',
+  },
 };

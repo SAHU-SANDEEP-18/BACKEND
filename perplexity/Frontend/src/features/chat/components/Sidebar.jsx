@@ -1,5 +1,7 @@
 import IconEl from "./IconEl";
 import ConfirmDialog from "./ConfirmDialog";
+import Tooltip from "./Tooltip";
+import ThemePicker from "./ThemePicker";
 import { setTheme } from "../../theme/theme.slice";
 import { THEME_OPTIONS, NAV_ITEMS } from "../constants";
 
@@ -20,6 +22,7 @@ const Sidebar = ({
   onToggleCollapse, // sirf desktop instance pe milega
   onRenameChat,
   onDeleteChat,
+  onOpenShortcuts,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [editingChatId, setEditingChatId] = useState(null);
@@ -150,48 +153,47 @@ const Sidebar = ({
 
           <div style={{ flex: 1 }} />
 
-          {THEME_OPTIONS.map((opt) => (
-            <button
-              key={opt.key}
-              onClick={() => dispatch(setTheme(opt.key))}
-              aria-label={`${opt.key} theme`}
-              style={{
-                width: theme === opt.key ? 20 : 14,
-                height: theme === opt.key ? 20 : 14,
-                borderRadius: "50%",
-                backgroundColor: opt.color,
-                border:
-                  theme === opt.key
-                    ? "2px solid #fff"
-                    : "2px solid transparent",
-                cursor: "pointer",
-                padding: 0,
-                transition: "all 0.2s",
-                boxShadow:
-                  theme === opt.key ? `0 0 8px ${opt.color}99` : "none",
-                marginBottom: 4,
-                flexShrink: 0,
-              }}
-            />
-          ))}
+          <ThemePicker theme={theme} dispatch={dispatch} setThemeAction={setTheme} t={t} />
 
-          <button
-            aria-label="Settings"
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 10,
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              marginTop: 6,
-            }}
-          >
-            <IconEl name="settings" size={18} color="rgba(255,255,255,0.3)" />
-          </button>
+          <Tooltip text="Keyboard shortcuts (Ctrl+/)" position="right" t={t}>
+        <button
+          onClick={onOpenShortcuts}
+          aria-label="Keyboard shortcuts"
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 10,
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <IconEl name="fileText" size={17} color="rgba(255,255,255,0.3)" />
+        </button>
+      </Tooltip>
+
+      <Tooltip text="Settings" position="right" t={t}>
+        <button
+          aria-label="Settings"
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 10,
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            marginTop: 6,
+          }}
+        >
+          <IconEl name="settings" size={18} color="rgba(255,255,255,0.3)" />
+        </button>
+      </Tooltip>
         </div>
 
         {/* Chat list panel — collapsed hone par width 0 ho jaati hai (desktop toggle) */}

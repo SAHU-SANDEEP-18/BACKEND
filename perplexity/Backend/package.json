@@ -16,7 +16,7 @@
     "@langchain/google-genai": "^2.2.0",
     "@langchain/langgraph": "^1.4.7",
     "@langchain/mistralai": "^1.2.0",
-    "@pinecone-database/pinecone": "^8.1.0",
+    "@pinecone-database/pinecone": "^6.1.4",
     "@tavily/core": "^0.7.6",
     "bcryptjs": "^3.0.3",
     "cohere-ai": "^8.0.0",

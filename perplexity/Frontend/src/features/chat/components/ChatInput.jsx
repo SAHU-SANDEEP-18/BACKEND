@@ -1,8 +1,9 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import IconEl from "./IconEl";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { detectLanguage } from "../constants";
+import { useState } from "react";
 
 const PASTE_THRESHOLD = 300;
 const MAX_FILES = 4;
@@ -23,6 +24,72 @@ const ChatInput = ({
   setAttachedFiles,
 }) => {
   const fileInputRef = useRef(null);
+  const recognitionRef = useRef(null);
+  const [isListening, setIsListening] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(true);
+
+  // ── Speech Recognition setup (ek hi baar, mount pe) ──
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      setSpeechSupported(false);
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true; // bolna band hone tak rukta rahe, single-phrase pe khud band na ho
+    recognition.interimResults = true; // bolते-bolते live text dikhाta rahe
+    recognition.lang = "en-IN"; // Indian English — Hinglish bhi reasonably samajh leta hai
+
+    recognition.onresult = (event) => {
+      let finalTranscript = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript;
+        }
+      }
+      if (finalTranscript) {
+        setMessage((prev) => (prev ? `${prev} ${finalTranscript}` : finalTranscript));
+      }
+    };
+
+    recognition.onerror = (event) => {
+      console.error("Speech recognition error:", event.error);
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognitionRef.current = recognition;
+
+    return () => {
+      recognition.stop();
+    };
+  }, [setMessage]);
+
+  const toggleListening = () => {
+    if (!recognitionRef.current) return;
+
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    } else {
+      recognitionRef.current.start();
+      setIsListening(true);
+    }
+  };
+
+  // Component unmount ya attachedFiles clear hone par bache hue preview URLs revoke karo
+  useEffect(() => {
+    return () => {
+      attachedFiles.forEach((item) => {
+        if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+      });
+    };
+  }, []);
 
   const addFiles = (newFiles) => {
     setAttachedFiles((prev) => {
@@ -153,7 +220,10 @@ const ChatInput = ({
                 )}
               </div>
               <button
-                onClick={() => setAttachedFiles((prev) => prev.filter((_, idx) => idx !== i))}
+                onClick={() => {
+                  if (item.previewUrl) URL.revokeObjectURL(item.previewUrl); // memory leak fix
+                  setAttachedFiles((prev) => prev.filter((_, idx) => idx !== i));
+                }}
                 aria-label="Remove file"
                 style={{
                   position: "absolute",
@@ -242,6 +312,21 @@ const ChatInput = ({
         </div>
       )}
 
+      {isListening && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            marginBottom: 6,
+            fontSize: 11,
+            color: t.primary,
+          }}
+        >
+          <div style={{ width: 6, height: 6, borderRadius: "50%", background: t.primary, animation: "nexus-blink 0.8s infinite" }} />
+          Listening...
+        </div>
+      )}
       <div
         style={{
           display: "flex",
@@ -250,7 +335,7 @@ const ChatInput = ({
           padding: "10px 12px",
           borderRadius: 12,
           background: "rgba(255,255,255,0.05)",
-          border: "0.5px solid rgba(255,255,255,0.09)",
+          border: isListening ? `0.5px solid ${t.primary}55` : "0.5px solid rgba(255,255,255,0.09)",
           transition: "border-color 0.2s",
         }}
         onFocus={(e) => (e.currentTarget.style.borderColor = `${t.primary}55`)}
@@ -303,21 +388,26 @@ const ChatInput = ({
           <IconEl name="clip" size={15} color="rgba(255,255,255,0.3)" />
         </button>
 
-        <button
-          aria-label="Voice input"
-          style={{
-            width: 28,
-            height: 28,
-            background: "transparent",
-            border: "none",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <IconEl name="mic" size={15} color="rgba(255,255,255,0.3)" />
-        </button>
+        {speechSupported && (
+          <button
+            onClick={toggleListening}
+            aria-label={isListening ? "Stop listening" : "Voice input"}
+            style={{
+              width: 28,
+              height: 28,
+              background: isListening ? `${t.primary}22` : "transparent",
+              border: "none",
+              borderRadius: 8,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              animation: isListening ? "nexus-pulse 1.2s ease-in-out infinite" : "none",
+            }}
+          >
+            <IconEl name="mic" size={15} color={isListening ? t.primary : "rgba(255,255,255,0.3)"} />
+          </button>
+        )}
 
         {isLoading ? (
           <button

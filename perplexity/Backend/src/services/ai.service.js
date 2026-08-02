@@ -9,6 +9,7 @@ import {
 } from "langchain";
 import * as z from "zod";
 import { searchInternet } from "./internet.service.js";
+import { retrieveContext } from "./rag.service.js";
 
 const geminiModel = new ChatGoogleGenerativeAI({
   model: "gemini-2.5-flash-lite",
@@ -152,14 +153,53 @@ const formatMessages = async (messages) => {
   return formatted.filter(Boolean);
 };
 
-export async function generateResponse(messages) {
+export async function generateResponse(messages, chatId) {
   const formatted = await formatMessages(messages);
+  await injectRagContext(formatted, messages, chatId);
   const response = await agent.invoke({ messages: formatted });
   return response.messages[response.messages.length - 1].text;
 }
 
-export async function* generateResponseStream(messages, signal) {
+// Document (PDF/DOCX) se related chunks nikaal ke last user-message ke andar hi prepend karta hai.
+// (SystemMessage nahi banate — createAgent khud ek internal system-message manage karta hai,
+// aur do system-messages ek sath dene se Gemini "System message should be the first one" error deta hai.)
+async function injectRagContext(formatted, rawMessages, chatId) {
+  if (!chatId) return;
+  const lastUserMsg = rawMessages.filter((m) => m.role === "user").at(-1)?.content || "";
+  if (!lastUserMsg.trim()) return;
+
+  try {
+    const ragContext = await retrieveContext(lastUserMsg, chatId);
+    if (!ragContext) return;
+
+    // Array mein sabse aakhri HumanMessage dhoondo aur usके content ke shuru mein context daal do
+    for (let i = formatted.length - 1; i >= 0; i--) {
+      if (formatted[i]._getType?.() === "human") {
+        const contextPrefix = `[Relevant context from an uploaded document — use this only if it helps answer the question, don't mention chunks/embeddings, cite the document name naturally if useful]\n${ragContext}\n\n[End of context]\n\n`;
+
+        if (typeof formatted[i].content === "string") {
+          formatted[i].content = contextPrefix + formatted[i].content;
+        } else if (Array.isArray(formatted[i].content)) {
+          // Multimodal message (image ke saath) — text-part ke shuru mein prepend karo
+          const textPart = formatted[i].content.find((c) => c.type === "text");
+          if (textPart) {
+            textPart.text = contextPrefix + (textPart.text || "");
+          } else {
+            formatted[i].content.unshift({ type: "text", text: contextPrefix });
+          }
+        }
+        break;
+      }
+    }
+  } catch (err) {
+    console.error("RAG retrieval failed:", err);
+    // fail silently — AI bina document-context ke bhi normal jawaab de sake
+  }
+}
+
+export async function* generateResponseStream(messages, signal, chatId) {
   const formatted = await formatMessages(messages);
+  await injectRagContext(formatted, messages, chatId);
   const stream = await agent.stream(
     { messages: formatted },
     { streamMode: "messages", signal },

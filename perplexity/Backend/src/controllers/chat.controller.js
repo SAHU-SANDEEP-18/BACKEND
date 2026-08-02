@@ -3,6 +3,7 @@ import chatModel from "../models/chat.model.js";
 import messageModel from "../models/message.model.js";
 import { getID } from "../sockets/server.socket.js";
 import { uploadToImageKit } from "../services/imagekit.service.js";
+import { ingestDocument } from "../services/rag.service.js";
 
 export async function uploadFiles(req, res) {
   if (!req.files?.length) {
@@ -56,6 +57,40 @@ export async function sendMessage(req, res) {
     attachments: attachments || [],
   });
 
+  // PDF/DOCX attachments — pehle fully ingest (extract + embed + Pinecone upsert) karo,
+  // AI response tabhi generate hoga jab document ka data ready ho chuka ho
+  const docAttachments = (attachments || []).filter((a) => a.kind === "document");
+  if (docAttachments.length > 0) {
+    io.to(`user:${req.user.id}`).emit("ai:thinking", { chatId: resolvedChatId });
+    const ingestResults = await Promise.all(
+      docAttachments.map(async (att) => {
+        try {
+          const fileRes = await fetch(att.url);
+          const arrayBuffer = await fileRes.arrayBuffer();
+          return await ingestDocument({
+            buffer: Buffer.from(arrayBuffer),
+            mimetype: att.mimeType,
+            fileName: att.name,
+            chatId: String(resolvedChatId),
+            attachmentId: att.fileId,
+          });
+        } catch (err) {
+          console.error(`Ingestion failed for ${att.name}:`, err);
+          return { chunksStored: 0 };
+        }
+      }),
+    );
+
+    // Pinecone "eventually consistent" hai — abhi-abhi upsert kiye vectors
+    // turant queryable nahi hote, unko index hone mein kuch second lagte hain.
+    // Agar kuch actually stored hua ho, thoda wait karo taaki agla retrieveContext() call
+    // in vectors ko dhoondh sake, warna AI ko empty-context milega.
+    const anyStored = ingestResults.some((r) => r.chunksStored > 0);
+    if (anyStored) {
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+    }
+  }
+
   const pastMessages = await messageModel
     .find({ chat: resolvedChatId })
     .select("role content quotedText attachments -_id");
@@ -74,8 +109,10 @@ export async function sendMessage(req, res) {
     })}\n\n`,
   );
 
-  // AI soch raha hai — turant bata do
-  io.to(`user:${req.user.id}`).emit("ai:thinking", { chatId: resolvedChatId });
+  // AI soch raha hai — turant bata do (agar document-ingestion ke dauraan already emit nahi hua)
+  if (docAttachments.length === 0) {
+    io.to(`user:${req.user.id}`).emit("ai:thinking", { chatId: resolvedChatId });
+  }
 
   let fullText = "";
   let firstChunkReceived = false;
@@ -91,7 +128,7 @@ export async function sendMessage(req, res) {
   });
 
   try {
-    const stream = generateResponseStream(pastMessages, abortController.signal);
+    const stream = generateResponseStream(pastMessages, abortController.signal, resolvedChatId);
 
     for await (const chunk of stream) {
       if (clientDisconnected) break; // user ne stop kiya — loop se turant nikal jao
@@ -204,7 +241,7 @@ export async function regenerateResponse(req, res) {
   });
 
   try {
-    const stream = generateResponseStream(pastMessages, abortController.signal);
+    const stream = generateResponseStream(pastMessages, abortController.signal, chatId);
 
     for await (const chunk of stream) {
       if (clientDisconnected) break;
@@ -336,7 +373,7 @@ export async function editMessage(req, res) {
   });
 
   try {
-    const stream = generateResponseStream(pastMessages, abortController.signal);
+    const stream = generateResponseStream(pastMessages, abortController.signal, chatId);
 
     for await (const chunk of stream) {
       if (clientDisconnected) break;
