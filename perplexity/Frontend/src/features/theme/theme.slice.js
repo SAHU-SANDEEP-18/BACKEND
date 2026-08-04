@@ -1,6 +1,7 @@
 import { createSlice } from '@reduxjs/toolkit';
+import { THEMES } from '../../config/themes';
 
-const allowedThemes = ['teal', 'green', 'orange', 'mono'];
+const allowedThemes = Object.keys(THEMES);
 
 const getInitialTheme = () => {
   if (typeof window === 'undefined') return 'teal';

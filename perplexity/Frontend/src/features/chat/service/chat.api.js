@@ -143,3 +143,18 @@ export const deleteChat = async (chatId) => {
   const response = await api.delete(`/delete/${chatId}`);
   return response.data;
 };
+
+export const shareChat = async (chatId) => {
+  const response = await api.post(`/${chatId}/share`);
+  return response.data;
+};
+
+export const unshareChat = async (chatId) => {
+  const response = await api.post(`/${chatId}/unshare`);
+  return response.data;
+};
+
+export const getSharedChat = async (shareId) => {
+  const response = await api.get(`/shared/${shareId}`);
+  return response.data;
+};

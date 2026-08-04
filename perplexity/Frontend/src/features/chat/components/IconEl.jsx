@@ -25,6 +25,7 @@ import {
   LuCopyCheck,
   LuFileText,
   LuImage,
+  LuDownload,
 } from "react-icons/lu";
 import { TfiReload } from "react-icons/tfi";
 import { VscReply } from "react-icons/vsc";
@@ -59,6 +60,7 @@ const Icons = {
   trash: LuTrash2,
   fileText: LuFileText,
   image: LuImage,
+  download: LuDownload,
 };
 
 const IconEl = ({ name, size = 18, color = "currentColor" }) => {

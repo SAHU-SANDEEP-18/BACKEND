@@ -1,4 +1,5 @@
 import { generateResponseStream, generateChatTitle } from "../services/ai.service.js";
+import crypto from "crypto";
 import chatModel from "../models/chat.model.js";
 import messageModel from "../models/message.model.js";
 import { getID } from "../sockets/server.socket.js";
@@ -128,7 +129,7 @@ export async function sendMessage(req, res) {
   });
 
   try {
-    const stream = generateResponseStream(pastMessages, abortController.signal, resolvedChatId);
+    const stream = generateResponseStream(pastMessages, abortController.signal, resolvedChatId, req.user.customInstructions);
 
     for await (const chunk of stream) {
       if (clientDisconnected) break; // user ne stop kiya — loop se turant nikal jao
@@ -241,7 +242,7 @@ export async function regenerateResponse(req, res) {
   });
 
   try {
-    const stream = generateResponseStream(pastMessages, abortController.signal, chatId);
+    const stream = generateResponseStream(pastMessages, abortController.signal, chatId, req.user.customInstructions);
 
     for await (const chunk of stream) {
       if (clientDisconnected) break;
@@ -373,7 +374,7 @@ export async function editMessage(req, res) {
   });
 
   try {
-    const stream = generateResponseStream(pastMessages, abortController.signal, chatId);
+    const stream = generateResponseStream(pastMessages, abortController.signal, chatId, req.user.customInstructions);
 
     for await (const chunk of stream) {
       if (clientDisconnected) break;
@@ -408,4 +409,54 @@ export async function editMessage(req, res) {
   } finally {
     if (!clientDisconnected) res.end();
   }
+}
+
+export async function shareChat(req, res) {
+  const { chatId } = req.params;
+
+  const chat = await chatModel.findOne({ _id: chatId, user: req.user.id });
+  if (!chat) {
+    return res.status(404).json({ message: "chat not found" });
+  }
+
+  if (!chat.shareId) {
+    chat.shareId = crypto.randomBytes(12).toString("hex");
+  }
+  chat.isPublic = true;
+  await chat.save();
+
+  res.status(200).json({ shareId: chat.shareId, isPublic: true });
+}
+
+export async function unshareChat(req, res) {
+  const { chatId } = req.params;
+
+  const chat = await chatModel.findOneAndUpdate(
+    { _id: chatId, user: req.user.id },
+    { isPublic: false },
+    { new: true },
+  );
+
+  if (!chat) {
+    return res.status(404).json({ message: "chat not found" });
+  }
+
+  res.status(200).json({ isPublic: false });
+}
+
+// Public route — NO auth check, kyunki share-link koi bhi access kar sake
+export async function getSharedChat(req, res) {
+  const { shareId } = req.params;
+
+  const chat = await chatModel.findOne({ shareId, isPublic: true });
+  if (!chat) {
+    return res.status(404).json({ message: "This chat is not shared or no longer available" });
+  }
+
+  const messages = await messageModel
+    .find({ chat: chat._id })
+    .select("role content createdAt -_id")
+    .sort({ createdAt: 1 });
+
+  res.status(200).json({ title: chat.title, messages });
 }

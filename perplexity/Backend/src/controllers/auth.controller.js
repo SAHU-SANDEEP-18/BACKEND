@@ -92,6 +92,7 @@ export async function login(req, res) {
       id: user._id,
       username: user.username,
       email: user.email,
+      customInstructions: user.customInstructions || "",
     },
   });
 }
@@ -112,4 +113,20 @@ export async function getMe(req, res) {
     success: true,
     user,
   });
+}
+
+export async function updateCustomInstructions(req, res) {
+  const { customInstructions } = req.body;
+
+  if (customInstructions && customInstructions.length > 1000) {
+    return res.status(400).json({ message: "Instructions too long (max 1000 characters)" });
+  }
+
+  const user = await userModel.findByIdAndUpdate(
+    req.user.id,
+    { customInstructions: customInstructions || "" },
+    { new: true },
+  ).select("-password");
+
+  res.status(200).json({ message: "Instructions updated", user });
 }

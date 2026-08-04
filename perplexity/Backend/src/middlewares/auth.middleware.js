@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
+import userModel from "../models/user.model.js";
 
-export function authUser(req, res, next) {
+export async function authUser(req, res, next) {
   const token = req.cookies.token;
 
   if (!token) {
@@ -13,9 +14,21 @@ export function authUser(req, res, next) {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
-    next();
+    const user = await userModel.findById(decoded.id).select("-password");
 
+    if (!user) {
+      return res.status(401).json({
+        message: "unauthorized",
+        success: true,
+        err: "Invalid token",
+      });
+    }
+
+    req.user = {
+      ...user.toObject(),
+      id: String(user._id),
+    };
+    next();
   } catch (err) {
     return res.status(401).json({
       message: "unauthorized",

@@ -19,3 +19,8 @@ export async function getMe() {
   const response = await api.get("/get-me");
   return response.data;
 }
+
+export const updateCustomInstructions = async (customInstructions) => {
+  const response = await api.put("/custom-instructions", { customInstructions });
+  return response.data;
+};

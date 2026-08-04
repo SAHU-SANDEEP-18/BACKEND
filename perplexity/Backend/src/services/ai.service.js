@@ -72,7 +72,7 @@ const searchInternetTool = tool(
   },
 );
 
-const SYSTEM_PROMPT = `You are a helpful assistant that always responds in clean, well-structured Markdown.
+const SYSTEM_PROMPT = `You are a helpful assistant. Your primary goal is to follow the user's requested tone, language, and verbosity exactly, even if that means using a casual mixed-language style like Hinglish.
 
 Tool usage — CRITICAL RULES:
 - Always use the searchInternet tool for questions about current events, recent data, prices, news, or anything that may have changed after your training cutoff.
@@ -90,13 +90,24 @@ Formatting rules for every response:
 - Keep the total answer concise — a weather question should be answerable in under 80 words unless the user explicitly asks for a detailed forecast.
 - CRITICAL: Produce exactly ONE version of the answer. Never state the same facts twice — not as a bullet list followed by a restating paragraph, not as a summary followed by a repeated summary. Pick ONE format (either short bullets OR a short paragraph, not both) and say each fact only once.
 - The searchInternet tool's output is raw reference material — it is NOT a draft of your answer and must never be echoed, reformatted, or reused as a list. Read it, extract only what's needed, and write your own single-pass answer from scratch.
-- WRONG example (never do this): "- LAMP stack\n- MEAN stack\n\nThe LAMP stack and MEAN stack are popular choices..." — this repeats the same facts twice in two formats. Write it only once instead.`;
+- WRONG example (never do this): "- LAMP stack\n- MEAN stack\n\nThe LAMP stack and MEAN stack are popular choices..." — this repeats the same facts twice in two formats. Write it only once instead.
+- If the user requests short answers, respond short. If the user requests Hinglish, reply in natural mixed Hindi-English. If the user requests a certain style, follow it over the generic formatting rules above.`;
 
-const agent = createAgent({
-  model: geminiModel,
-  tools: [searchInternetTool],
-  systemPrompt: SYSTEM_PROMPT,
-});
+// Har request ke liye custom-instructions ke sath final system-prompt banate hain
+function buildSystemPrompt(customInstructions) {
+  if (!customInstructions?.trim()) return SYSTEM_PROMPT;
+
+  return `${SYSTEM_PROMPT}\n\nIMPORTANT: The following user preferences are the highest-priority style rules for this conversation. Follow them before the generic formatting defaults, unless they would break safety or factual correctness.\n\nUser custom style instructions:\n${customInstructions.trim()}\n\nStyle enforcement:\n- Prefer the user's requested language and tone.\n- If the user says "short" or "Hinglish", keep replies concise and mixed Hindi-English naturally.\n- Do not add extra explanation or long preambles when the user wants brevity.`;
+}
+
+// Agent ab har call pe custom-instructions ke sath fresh banega (kyunki systemPrompt static nahi rahega)
+function buildAgent(customInstructions) {
+  return createAgent({
+    model: geminiModel,
+    tools: [searchInternetTool],
+    systemPrompt: buildSystemPrompt(customInstructions),
+  });
+}
 
 // ImageKit ka public-URL fetch karke base64 data-URL mein convert karta hai —
 // @langchain/google-genai ko plain HTTPS-URL nahi chahiye, base64 chahiye hota hai
@@ -153,9 +164,10 @@ const formatMessages = async (messages) => {
   return formatted.filter(Boolean);
 };
 
-export async function generateResponse(messages, chatId) {
+export async function generateResponse(messages, chatId, customInstructions) {
   const formatted = await formatMessages(messages);
   await injectRagContext(formatted, messages, chatId);
+  const agent = buildAgent(customInstructions);
   const response = await agent.invoke({ messages: formatted });
   return response.messages[response.messages.length - 1].text;
 }
@@ -197,9 +209,10 @@ async function injectRagContext(formatted, rawMessages, chatId) {
   }
 }
 
-export async function* generateResponseStream(messages, signal, chatId) {
+export async function* generateResponseStream(messages, signal, chatId, customInstructions) {
   const formatted = await formatMessages(messages);
   await injectRagContext(formatted, messages, chatId);
+  const agent = buildAgent(customInstructions);
   const stream = await agent.stream(
     { messages: formatted },
     { streamMode: "messages", signal },

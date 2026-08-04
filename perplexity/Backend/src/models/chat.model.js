@@ -12,6 +12,16 @@ const chatSchema = new mongoose.Schema(
             default: 'New Chat',
             trim: true,
         },
+        isPublic: {
+            type: Boolean,
+            default: false,
+        },
+        shareId: {
+            type: String,
+            default: null,
+            unique: true,
+            sparse: true, // taaki multiple null-values allowed rahein (unique sirf non-null pe apply ho)
+        },
     },
     { timestamps: true }
 );

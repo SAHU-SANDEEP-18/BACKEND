@@ -149,7 +149,13 @@ const chatSlice = createSlice({
     clearQuotedText: (state) => {
       state.quotedText = null;
     },
-
+    updateChatShareStatus: (state, action) => {
+      const { chatId, isPublic, shareId } = action.payload;
+      if (state.chats[chatId]) {
+        state.chats[chatId].isPublic = isPublic;
+        if (shareId) state.chats[chatId].shareId = shareId;
+      }
+    },
     renameChatTitle: (state, action) => {
       const { chatId, title } = action.payload;
       if (state.chats[chatId]) {
@@ -197,5 +203,6 @@ export const {
   renameChatTitle,
   removeChat,
   clearQuotedText,
+  updateChatShareStatus,
 } = chatSlice.actions;
 export default chatSlice.reducer;

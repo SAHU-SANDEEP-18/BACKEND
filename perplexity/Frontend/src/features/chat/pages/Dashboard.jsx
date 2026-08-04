@@ -13,6 +13,11 @@ import TypingIndicator from "../components/TypingIndicator";
 import WelcomeScreen from "../components/WelcomeScreen";
 import ChatInput from "../components/ChatInput";
 import ShortcutsModal from "../components/ShortcutsModal";
+import { exportAsMarkdown, exportAsPDF } from "../utils/exportChat";
+import ShareModal from "../components/ShareModal";
+import MessageSearchBar from "../components/MessageSearchBar";
+import SettingsModal from "../components/SettingsModal";
+import { updateChatShareStatus } from "../chat.slice";
 
 // ─── Dashboard ────────────────────────────────────────────────────────
 const Dashboard = () => {
@@ -42,6 +47,13 @@ const Dashboard = () => {
   const [pastedContent, setPastedContent] = useState(null);
   const [attachedFiles, setAttachedFiles] = useState([]); // [{ file, previewUrl }]
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [searchBarOpen, setSearchBarOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeMatchIndex, setActiveMatchIndex] = useState(0);
+  const messageRefs = useRef({});
   const [isUploading, setIsUploading] = useState(false); // file upload ke dauraan send block karne ke liye
   const [drawerOpen, setDrawerOpen] = useState(false);
 const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -91,8 +103,13 @@ useEffect(() => {
         } else {
           setDrawerOpen((prev) => !prev);
         }
+      } else if (isMod && e.key.toLowerCase() === "f" && currentChatId) {
+        e.preventDefault();
+        setSearchBarOpen(true);
       } else if (e.key === "Escape") {
         setShortcutsOpen(false);
+        setSearchBarOpen(false);
+        setSearchQuery("");
       }
     };
 
@@ -125,6 +142,27 @@ useEffect(() => {
 
   const selectedChat = currentChatId ? chats[currentChatId] : null;
   const selectedMessages = selectedChat?.messages || [];
+
+  // ── Search-matches: indices of messages jinme query milta hai ──
+  const matchIndices = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const q = searchQuery.trim().toLowerCase();
+    return selectedMessages
+      .map((msg, i) => (msg.content?.toLowerCase().includes(q) ? i : -1))
+      .filter((i) => i !== -1);
+  }, [selectedMessages, searchQuery]);
+
+  // Jab matches badlein (naya search ya messages update), activeIndex reset karo
+  useEffect(() => {
+    setActiveMatchIndex(0);
+  }, [searchQuery, currentChatId]);
+
+  // Active-match pe scroll karo
+  useEffect(() => {
+    if (matchIndices.length === 0) return;
+    const targetIndex = matchIndices[activeMatchIndex];
+    messageRefs.current[targetIndex]?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [activeMatchIndex, matchIndices]);
 
   // ── Scroll to bottom (streaming ke dauraan instant scroll, warna smooth) ──
   useEffect(() => {
@@ -223,6 +261,7 @@ useEffect(() => {
     onRenameChat: handleRenameChat,
     onDeleteChat: handleDeleteChat,
     onOpenShortcuts: () => setShortcutsOpen(true),
+    onOpenSettings: () => setSettingsOpen(true),
   };
 
   // ── Markdown component map — ab sirf theme (t) change hone pe naya banega ──
@@ -373,6 +412,8 @@ useEffect(() => {
           </span>
 
           <button
+            onClick={() => setSearchBarOpen((prev) => !prev)}
+            aria-label="Search in chat"
             style={{
               width: 28,
               height: 28,
@@ -384,8 +425,130 @@ useEffect(() => {
               justifyContent: "center",
             }}
           >
-            <IconEl name="dots" size={15} color="rgba(255,255,255,0.25)" />
+            <IconEl name="search" size={14} color="rgba(255,255,255,0.35)" />
           </button>
+
+          <div style={{ position: "relative" }}>
+            <button
+              onClick={() => setExportMenuOpen((prev) => !prev)}
+              style={{
+                width: 28,
+                height: 28,
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <IconEl name="dots" size={15} color="rgba(255,255,255,0.25)" />
+            </button>
+
+            {exportMenuOpen && (
+              <>
+                <div
+                  onClick={() => setExportMenuOpen(false)}
+                  style={{ position: "fixed", inset: 0, zIndex: 40 }}
+                />
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "calc(100% + 6px)",
+                    right: 0,
+                    background: "#161616",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: 10,
+                    padding: 6,
+                    minWidth: 170,
+                    zIndex: 41,
+                    boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
+                  }}
+                >
+                  <button
+                    disabled={!selectedChat}
+                    onClick={() => {
+                      exportAsMarkdown(selectedChat?.title, selectedMessages);
+                      setExportMenuOpen(false);
+                    }}
+                    style={{
+                      width: "100%",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "8px 10px",
+                      background: "transparent",
+                      border: "none",
+                      borderRadius: 6,
+                      cursor: selectedChat ? "pointer" : "not-allowed",
+                      opacity: selectedChat ? 1 : 0.4,
+                      fontSize: 12.5,
+                      color: "rgba(255,255,255,0.85)",
+                      textAlign: "left",
+                    }}
+                    onMouseEnter={(e) => selectedChat && (e.currentTarget.style.background = "rgba(255,255,255,0.06)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                  >
+                    <IconEl name="download" size={13} color="rgba(255,255,255,0.6)" />
+                    Export as Markdown
+                  </button>
+                  <button
+                    disabled={!selectedChat}
+                    onClick={() => {
+                      setShareModalOpen(true);
+                      setExportMenuOpen(false);
+                    }}
+                    style={{
+                      width: "100%",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "8px 10px",
+                      background: "transparent",
+                      border: "none",
+                      borderRadius: 6,
+                      cursor: selectedChat ? "pointer" : "not-allowed",
+                      opacity: selectedChat ? 1 : 0.4,
+                      fontSize: 12.5,
+                      color: "rgba(255,255,255,0.85)",
+                      textAlign: "left",
+                    }}
+                    onMouseEnter={(e) => selectedChat && (e.currentTarget.style.background = "rgba(255,255,255,0.06)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                  >
+                    <IconEl name="share" size={13} color="rgba(255,255,255,0.6)" />
+                    Share chat
+                  </button><button
+                    disabled={!selectedChat}
+                    onClick={() => {
+                      exportAsPDF(selectedChat?.title, selectedMessages);
+                      setExportMenuOpen(false);
+                    }}
+                    style={{
+                      width: "100%",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "8px 10px",
+                      background: "transparent",
+                      border: "none",
+                      borderRadius: 6,
+                      cursor: selectedChat ? "pointer" : "not-allowed",
+                      opacity: selectedChat ? 1 : 0.4,
+                      fontSize: 12.5,
+                      color: "rgba(255,255,255,0.85)",
+                      textAlign: "left",
+                    }}
+                    onMouseEnter={(e) => selectedChat && (e.currentTarget.style.background = "rgba(255,255,255,0.06)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                  >
+                    <IconEl name="download" size={13} color="rgba(255,255,255,0.6)" />
+                    Export as PDF
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Welcome screen or Chat messages */}
@@ -399,6 +562,22 @@ useEffect(() => {
             onSuggestionClick={(label) => setMessage(label + ": ")}
           />
         ) : (
+          <div style={{ flex: 1, position: "relative", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+            {searchBarOpen && (
+              <MessageSearchBar
+                query={searchQuery}
+                setQuery={setSearchQuery}
+                matchCount={matchIndices.length}
+                activeIndex={activeMatchIndex}
+                onNext={() => setActiveMatchIndex((prev) => (prev + 1) % Math.max(matchIndices.length, 1))}
+                onPrev={() => setActiveMatchIndex((prev) => (prev - 1 + matchIndices.length) % Math.max(matchIndices.length, 1))}
+                onClose={() => {
+                  setSearchBarOpen(false);
+                  setSearchQuery("");
+                }}
+                t={t}
+              />
+            )}
           <div
             style={{
               flex: 1,
@@ -427,11 +606,15 @@ useEffect(() => {
                   })
                 }
                 onReply={(text) => dispatch(setQuotedText(text))}
+                searchQuery={searchBarOpen ? searchQuery : ""}
+                isActiveMatch={matchIndices[activeMatchIndex] === i}
+                messageRef={(el) => (messageRefs.current[i] = el)}
               />
             ))}
 
             {aiStatus === "thinking" && <TypingIndicator t={t} />}
             <div ref={messagesEndRef} style={{ height: 1 }} />
+          </div>
           </div>
         )}
 
@@ -453,6 +636,15 @@ useEffect(() => {
       </div>
 
       {shortcutsOpen && <ShortcutsModal onClose={() => setShortcutsOpen(false)} t={t} />}
+      {settingsOpen && <SettingsModal user={user} onClose={() => setSettingsOpen(false)} t={t} />}
+      {shareModalOpen && selectedChat && (
+        <ShareModal
+          chat={selectedChat}
+          onClose={() => setShareModalOpen(false)}
+          onUpdateShareStatus={(status) => dispatch(updateChatShareStatus({ chatId: currentChatId, ...status }))}
+          t={t}
+        />
+      )}
 
       <style>{`
         .nexus-tooltip-wrapper:hover .nexus-tooltip-text { opacity: 1 !important; }

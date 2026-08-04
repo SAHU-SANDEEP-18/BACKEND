@@ -23,6 +23,7 @@ const Sidebar = ({
   onRenameChat,
   onDeleteChat,
   onOpenShortcuts,
+  onOpenSettings,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [editingChatId, setEditingChatId] = useState(null);
@@ -177,6 +178,7 @@ const Sidebar = ({
 
       <Tooltip text="Settings" position="right" t={t}>
         <button
+          onClick={onOpenSettings}
           aria-label="Settings"
           style={{
             width: 40,

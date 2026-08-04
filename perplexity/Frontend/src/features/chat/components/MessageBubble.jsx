@@ -12,6 +12,9 @@ const MessageBubble = React.memo(function MessageBubble({
   onRegenerate,
   onEdit, // (newContent) => void
   onReply, // (selectedText) => void
+  searchQuery, // agar set hai, matching-text highlight hoga
+  isActiveMatch, // ye message currently "active" search-result hai
+  messageRef, // scroll-into-view ke liye ref
 }) {
   const isUser = msg.role === "user";
   const showRegenerate = !isUser && isLast && !msg.streaming;
@@ -56,6 +59,28 @@ const MessageBubble = React.memo(function MessageBubble({
     setSelectionPopup(null);
   };
 
+  const highlightText = (text) => {
+    if (!searchQuery?.trim()) return text;
+    const parts = text.split(new RegExp(`(${searchQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi"));
+    return parts.map((part, i) =>
+      part.toLowerCase() === searchQuery.toLowerCase() ? (
+        <mark
+          key={i}
+          style={{
+            background: isActiveMatch ? t.primary : `${t.primary}55`,
+            color: isActiveMatch ? t.textOn : "#fff",
+            borderRadius: 2,
+            padding: "0 1px",
+          }}
+        >
+          {part}
+        </mark>
+      ) : (
+        part
+      ),
+    );
+  };
+
   const handleCopy = () => {
     navigator.clipboard.writeText(msg.content);
     setCopied(true);
@@ -76,6 +101,7 @@ const MessageBubble = React.memo(function MessageBubble({
 
   return (
     <div
+      ref={messageRef}
       className="message-row"
       style={{
         display: "flex",
@@ -269,7 +295,7 @@ const MessageBubble = React.memo(function MessageBubble({
               </div>
             ) : (
               <p style={{ margin: 0, fontSize: 13, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>
-                {msg.content}
+                {searchQuery ? highlightText(msg.content) : msg.content}
               </p>
             )
           ) : (
