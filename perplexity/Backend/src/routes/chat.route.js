@@ -11,6 +11,7 @@ import {
   shareChat,
   unshareChat,
   getSharedChat,
+  reactToMessage,
 } from "../controllers/chat.controller.js";
 import { authUser } from "../middlewares/auth.middleware.js";
 import { upload } from "../middlewares/upload.middleware.js";
@@ -27,5 +28,6 @@ chatRouter.put("/:chatId/messages/:messageId", authUser, editMessage);
 chatRouter.put("/:chatId/title", authUser, renameChat);
 chatRouter.delete("/delete/:chatId/", authUser, deleteChat);
 chatRouter.get("/shared/:shareId", getSharedChat);
+chatRouter.put("/messages/:messageId/reaction", authUser, reactToMessage);
 
 export default chatRouter;

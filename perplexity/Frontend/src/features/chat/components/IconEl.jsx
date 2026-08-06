@@ -26,8 +26,12 @@ import {
   LuFileText,
   LuImage,
   LuDownload,
+  LuChevronDown,
+  LuChevronRight,
+  LuFolderPlus,
 } from "react-icons/lu";
 import { TfiReload } from "react-icons/tfi";
+import { LuThumbsUp, LuThumbsDown } from "react-icons/lu";
 import { VscReply } from "react-icons/vsc";
 
 const Icons = {
@@ -61,6 +65,11 @@ const Icons = {
   fileText: LuFileText,
   image: LuImage,
   download: LuDownload,
+  chevronDown: LuChevronDown,
+  chevronRight: LuChevronRight,
+  folderPlus: LuFolderPlus,
+  thumbsUp: LuThumbsUp,
+  thumbsDown: LuThumbsDown,
 };
 
 const IconEl = ({ name, size = 18, color = "currentColor" }) => {

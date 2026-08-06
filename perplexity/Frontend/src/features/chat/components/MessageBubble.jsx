@@ -12,6 +12,7 @@ const MessageBubble = React.memo(function MessageBubble({
   onRegenerate,
   onEdit, // (newContent) => void
   onReply, // (selectedText) => void
+  onReact, // (reaction) => void
   searchQuery, // agar set hai, matching-text highlight hoga
   isActiveMatch, // ye message currently "active" search-result hai
   messageRef, // scroll-into-view ke liye ref
@@ -150,6 +151,7 @@ const MessageBubble = React.memo(function MessageBubble({
           {/* Floating Reply popup — jahan text select hua wahi dikhta hai */}
           {selectionPopup && (
             <button
+              type="button"
               onMouseDown={(e) => e.preventDefault()} // taaki selection clear na ho click se pehle
               onClick={handleReplyClick}
               style={{
@@ -324,6 +326,55 @@ const MessageBubble = React.memo(function MessageBubble({
         {!isUser && !msg.streaming && (
           <div style={{ display: "flex", gap: 2, marginTop: 4 }}>
             <button
+              type="button"
+              onClick={() => onReact?.(msg.reaction === "like" ? null : "like")}
+              aria-label="Like response"
+              style={{
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 24,
+                height: 24,
+                borderRadius: 6,
+                flexShrink: 0,
+                opacity: msg.reaction === "like" ? 1 : 0.4,
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = 1)}
+              onMouseLeave={(e) => {
+                if (msg.reaction !== "like") e.currentTarget.style.opacity = 0.4;
+              }}
+            >
+              <IconEl name="thumbsUp" size={12} color={msg.reaction === "like" ? "#4ade80" : "rgba(255,255,255,0.6)"} />
+            </button>
+            <button
+              type="button"
+              onClick={() => onReact?.(msg.reaction === "dislike" ? null : "dislike")}
+              aria-label="Dislike response"
+              style={{
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 24,
+                height: 24,
+                borderRadius: 6,
+                flexShrink: 0,
+                opacity: msg.reaction === "dislike" ? 1 : 0.4,
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = 1)}
+              onMouseLeave={(e) => {
+                if (msg.reaction !== "dislike") e.currentTarget.style.opacity = 0.4;
+              }}
+            >
+              <IconEl name="thumbsDown" size={12} color={msg.reaction === "dislike" ? "#f87171" : "rgba(255,255,255,0.6)"} />
+            </button>
+            <button
+              type="button"
               onClick={handleCopy}
               aria-label="Copy response"
               style={{
@@ -350,6 +401,7 @@ const MessageBubble = React.memo(function MessageBubble({
 
             {showRegenerate && (
               <button
+                type="button"
                 onClick={onRegenerate}
                 aria-label="Regenerate response"
                 style={{
@@ -400,6 +452,7 @@ const MessageBubble = React.memo(function MessageBubble({
       {/* Edit — sirf user-messages pe, hover pe dikhta hai */}
       {isUser && !isEditing && (
         <button
+          type="button"
           onClick={() => setIsEditing(true)}
           aria-label="Edit message"
           className="edit-btn"

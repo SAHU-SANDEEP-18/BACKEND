@@ -20,6 +20,11 @@ const messageSchema = new mongoose.Schema(
             type: String,
             default: null,
         },
+        reaction: {
+            type: String,
+            enum: ["like", "dislike", null],
+            default: null,
+        },
         attachments: {
             type: [
                 {

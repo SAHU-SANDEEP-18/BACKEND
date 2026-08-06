@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { store } from "../../../app/app.store";
 import { initializeSocketConnection } from "../service/chat.socket";
 import { useDispatch } from "react-redux";
 import {
@@ -268,6 +269,7 @@ export const useChat = () => {
         acc[chat._id] = {
           id: chat._id,
           title: chat.title || "New Chat",
+          folderId: chat.folderId || null,
           messages: [],
           lastUpdated: chat.updatedAt,
         };
@@ -328,6 +330,32 @@ export const useChat = () => {
     }
   }
 
+  // ── React to a message (optimistic update + server call) ──
+  async function handleReaction({ chatId, messageId, messageIndex, reaction }) {
+    if (!chatId || messageIndex === undefined) return;
+
+    // If message doesn't have a server id yet, disallow reacting
+    if (!messageId) {
+      dispatch(setError("Can't react to unsaved message yet"));
+      return;
+    }
+
+    // get previous reaction to allow revert on failure
+    const prevReaction = store.getState().chat.chats?.[chatId]?.messages?.[messageIndex]?.reaction || null;
+
+    // optimistic update
+    dispatch({ type: "chat/setMessageReaction", payload: { chatId, messageIndex, reaction } });
+
+    try {
+      const api = await import("../service/chat.api");
+      await api.reactToMessage(messageId, reaction);
+    } catch (error) {
+      // revert optimistic update
+      dispatch({ type: "chat/setMessageReaction", payload: { chatId, messageIndex, reaction: prevReaction } });
+      dispatch(setError(error?.response?.data?.message || error?.message || "Unable to react to message"));
+    }
+  }
+
   return {
     initializeSocketConnection,
     handleSendMessage,
@@ -336,6 +364,7 @@ export const useChat = () => {
     handleStopGeneration,
     handleRegenerate,
     handleEditMessage,
+    handleReaction,
     handleRenameChat,
     handleDeleteChat,
   };

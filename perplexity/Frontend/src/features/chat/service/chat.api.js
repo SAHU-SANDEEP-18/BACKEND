@@ -158,3 +158,8 @@ export const getSharedChat = async (shareId) => {
   const response = await api.get(`/shared/${shareId}`);
   return response.data;
 };
+
+export const reactToMessage = async (messageId, reaction) => {
+  const response = await api.put(`/messages/${messageId}/reaction`, { reaction });
+  return response.data;
+};

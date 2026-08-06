@@ -17,7 +17,8 @@ import { exportAsMarkdown, exportAsPDF } from "../utils/exportChat";
 import ShareModal from "../components/ShareModal";
 import MessageSearchBar from "../components/MessageSearchBar";
 import SettingsModal from "../components/SettingsModal";
-import { updateChatShareStatus } from "../chat.slice";
+import { updateChatShareStatus, setFolders, addFolder, renameFolderInState, removeFolder, setChatFolder } from "../chat.slice";
+import { createFolder, getFolders, renameFolder, deleteFolder, moveChatToFolder } from "../../folder/folder.api";
 
 // ─── Dashboard ────────────────────────────────────────────────────────
 const Dashboard = () => {
@@ -31,11 +32,13 @@ const Dashboard = () => {
     handleEditMessage,
     handleRenameChat,
     handleDeleteChat,
+    handleReaction,
   } = useChat();
 
   const theme = useSelector((state) => state.theme.theme);
   const user = useSelector((state) => state.auth.user);
   const chats = useSelector((state) => state.chat.chats || {});
+  const folders = useSelector((state) => state.chat.folders || []);
   const currentChatId = useSelector((state) => state.chat.currentChatId);
   const isLoading = useSelector((state) => state.chat.isLoading);
   const aiStatus = useSelector((state) => state.chat.aiStatus);
@@ -77,6 +80,18 @@ useEffect(() => {
     (async () => {
       await handleGetChats();
       setChatsLoaded(true);
+    })();
+  }, []);
+
+  // ── Init: folders ──
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await getFolders();
+        dispatch(setFolders(data.folders));
+      } catch (err) {
+        console.error("Failed to load folders:", err);
+      }
     })();
   }, []);
 
@@ -253,6 +268,7 @@ useEffect(() => {
     theme,
     dispatch,
     chatList,
+    folders,
     currentChatId,
     activeNav,
     setActiveNav,
@@ -262,6 +278,38 @@ useEffect(() => {
     onDeleteChat: handleDeleteChat,
     onOpenShortcuts: () => setShortcutsOpen(true),
     onOpenSettings: () => setSettingsOpen(true),
+    onCreateFolder: async (name) => {
+      try {
+        const data = await createFolder(name);
+        dispatch(addFolder(data.folder));
+      } catch (err) {
+        console.error("Failed to create folder:", err);
+      }
+    },
+    onRenameFolder: async (folderId, name) => {
+      try {
+        await renameFolder(folderId, name);
+        dispatch(renameFolderInState({ folderId, name }));
+      } catch (err) {
+        console.error("Failed to rename folder:", err);
+      }
+    },
+    onDeleteFolder: async (folderId) => {
+      try {
+        await deleteFolder(folderId);
+        dispatch(removeFolder(folderId));
+      } catch (err) {
+        console.error("Failed to delete folder:", err);
+      }
+    },
+    onMoveChatToFolder: async (chatId, folderId) => {
+      try {
+        await moveChatToFolder(chatId, folderId);
+        dispatch(setChatFolder({ chatId, folderId }));
+      } catch (err) {
+        console.error("Failed to move chat:", err);
+      }
+    },
   };
 
   // ── Markdown component map — ab sirf theme (t) change hone pe naya banega ──
@@ -606,6 +654,9 @@ useEffect(() => {
                   })
                 }
                 onReply={(text) => dispatch(setQuotedText(text))}
+                onReact={(reaction) =>
+                  handleReaction({ chatId: currentChatId, messageId: msg._id, messageIndex: i, reaction })
+                }
                 searchQuery={searchBarOpen ? searchQuery : ""}
                 isActiveMatch={matchIndices[activeMatchIndex] === i}
                 messageRef={(el) => (messageRefs.current[i] = el)}
@@ -650,6 +701,7 @@ useEffect(() => {
         .nexus-tooltip-wrapper:hover .nexus-tooltip-text { opacity: 1 !important; }
         .message-row:hover .edit-btn { opacity: 1 !important; }
         .chat-item:hover .chat-item-actions { opacity: 1 !important; }
+.folder-header:hover .folder-actions { opacity: 1 !important; }
         @keyframes nexus-pulse {
           0%, 100% { transform: scale(1); opacity: 1; }
           50% { transform: scale(1.08); opacity: 0.85; }

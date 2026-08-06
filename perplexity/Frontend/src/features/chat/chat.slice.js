@@ -2,6 +2,7 @@ import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
   chats: {},
+  folders: [], // [{ _id, name }]
   currentChatId: null,
   isLoading: false,
   error: null,
@@ -180,6 +181,39 @@ const chatSlice = createSlice({
         delete state.chats[oldId];
       }
     },
+    // ── Folders ──
+    setFolders: (state, action) => {
+      state.folders = action.payload;
+    },
+    addFolder: (state, action) => {
+      state.folders.push(action.payload);
+    },
+    renameFolderInState: (state, action) => {
+      const { folderId, name } = action.payload;
+      const folder = state.folders.find((f) => f._id === folderId);
+      if (folder) folder.name = name;
+    },
+    removeFolder: (state, action) => {
+      const folderId = action.payload;
+      state.folders = state.folders.filter((f) => f._id !== folderId);
+      // us folder ki chats ko Uncategorized mein wapas bhej do (local-state bhi sync rahe)
+      Object.values(state.chats).forEach((chat) => {
+        if (chat.folderId === folderId) chat.folderId = null;
+      });
+    },
+    setMessageReaction: (state, action) => {
+      const { chatId, messageIndex, reaction } = action.payload;
+      const chat = state.chats[chatId];
+      if (chat?.messages[messageIndex]) {
+        chat.messages[messageIndex].reaction = reaction;
+      }
+    },
+    setChatFolder: (state, action) => {
+      const { chatId, folderId } = action.payload;
+      if (state.chats[chatId]) {
+        state.chats[chatId].folderId = folderId || null;
+      }
+    },
   },
 });
 
@@ -204,5 +238,11 @@ export const {
   removeChat,
   clearQuotedText,
   updateChatShareStatus,
+  setFolders,
+  addFolder,
+  renameFolderInState,
+  removeFolder,
+  setChatFolder,
+  setMessageReaction,
 } = chatSlice.actions;
 export default chatSlice.reducer;

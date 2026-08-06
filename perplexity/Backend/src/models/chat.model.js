@@ -22,6 +22,11 @@ const chatSchema = new mongoose.Schema(
             unique: true,
             sparse: true, // taaki multiple null-values allowed rahein (unique sirf non-null pe apply ho)
         },
+        folderId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Folder",
+            default: null,
+        },
     },
     { timestamps: true }
 );

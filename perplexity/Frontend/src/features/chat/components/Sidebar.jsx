@@ -12,6 +12,7 @@ const Sidebar = ({
   theme,
   dispatch,
   chatList,
+  folders = [],
   currentChatId,
   activeNav,
   setActiveNav,
@@ -24,11 +25,24 @@ const Sidebar = ({
   onDeleteChat,
   onOpenShortcuts,
   onOpenSettings,
+  onCreateFolder, // (name) => void
+  onRenameFolder, // (folderId, name) => void
+  onDeleteFolder, // (folderId) => void
+  onMoveChatToFolder, // (chatId, folderId|null) => void
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [editingChatId, setEditingChatId] = useState(null);
   const [editTitle, setEditTitle] = useState("");
   const [confirmDeleteChat, setConfirmDeleteChat] = useState(null); // { id, title } | null
+  const [confirmDeleteFolder, setConfirmDeleteFolder] = useState(null); // { id, name } | null
+  const [expandedFolders, setExpandedFolders] = useState({});
+  const [editingFolderId, setEditingFolderId] = useState(null);
+  const [editFolderName, setEditFolderName] = useState("");
+  const [creatingFolder, setCreatingFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [moveMenuChatId, setMoveMenuChatId] = useState(null); // "..." menu ke andar open hua move-submenu
+
+  const toggleFolder = (id) => setExpandedFolders((prev) => ({ ...prev, [id]: !prev[id] }));
 
   // Title ya last-message content mein match dhoondo, case-insensitive
   const filteredChatList = useMemo(() => {
@@ -41,6 +55,262 @@ const Sidebar = ({
       return titleMatch || contentMatch;
     });
   }, [chatList, searchQuery]);
+
+  // Folder-wise grouping
+  const { byFolder, uncategorized } = useMemo(() => {
+    const grouped = {};
+    const rest = [];
+    filteredChatList.forEach((chat) => {
+      if (chat.folderId) {
+        grouped[chat.folderId] = grouped[chat.folderId] || [];
+        grouped[chat.folderId].push(chat);
+      } else {
+        rest.push(chat);
+      }
+    });
+    return { byFolder: grouped, uncategorized: rest };
+  }, [filteredChatList]);
+
+  const handleCreateFolder = () => {
+    if (newFolderName.trim()) {
+      onCreateFolder(newFolderName.trim());
+    }
+    setNewFolderName("");
+    setCreatingFolder(false);
+  };
+
+  const renderChatItem = (chat) => (
+    <div
+      key={chat.id}
+      className="chat-item"
+      onClick={() => {
+        if (editingChatId !== chat.id) {
+          onSelectChat(chat.id);
+          onClose?.();
+        }
+      }}
+      style={{
+        padding: "8px 12px",
+        cursor: "pointer",
+        position: "relative",
+        borderLeft: `2px solid ${currentChatId === chat.id ? t.primary : "transparent"}`,
+        background:
+          currentChatId === chat.id
+            ? `${t.primary}12`
+            : "transparent",
+        transition: "background 0.15s",
+      }}
+      onMouseEnter={(e) => {
+        if (currentChatId !== chat.id)
+          e.currentTarget.style.background = "rgba(255,255,255,0.04)";
+      }}
+      onMouseLeave={(e) => {
+        if (currentChatId !== chat.id)
+          e.currentTarget.style.background = "transparent";
+      }}
+    >
+      {editingChatId === chat.id ? (
+        <input
+          autoFocus
+          value={editTitle}
+          onChange={(e) => setEditTitle(e.target.value)}
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              if (editTitle.trim()) onRenameChat(chat.id, editTitle.trim());
+              setEditingChatId(null);
+            } else if (e.key === "Escape") {
+              setEditingChatId(null);
+            }
+          }}
+          onBlur={() => {
+            if (editTitle.trim() && editTitle.trim() !== chat.title) {
+              onRenameChat(chat.id, editTitle.trim());
+            }
+            setEditingChatId(null);
+          }}
+          style={{
+            width: "100%",
+            background: "rgba(0,0,0,0.3)",
+            border: `1px solid ${t.primary}55`,
+            borderRadius: 5,
+            padding: "3px 6px",
+            fontSize: 12,
+            color: "#fff",
+            outline: "none",
+            fontFamily: "inherit",
+          }}
+        />
+      ) : (
+        <>
+          <div
+            style={{
+              fontSize: 12,
+              color: currentChatId === chat.id ? "#fff" : "rgba(255,255,255,0.65)",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              paddingRight: 44,
+            }}
+          >
+            {chat.title || "New Chat"}
+          </div>
+          <div
+            style={{
+              fontSize: 11,
+              color: "rgba(255,255,255,0.28)",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              marginTop: 2,
+            }}
+          >
+            {chat.messages?.[chat.messages.length - 1]?.content?.slice(0, 40) || "Start a conversation"}
+          </div>
+          <div
+            style={{
+              fontSize: 10,
+              color: "rgba(255,255,255,0.18)",
+              marginTop: 1,
+            }}
+          >
+            {chat.lastUpdated ? new Date(chat.lastUpdated).toLocaleString() : "Just now"}
+          </div>
+
+          <div
+            className="chat-item-actions"
+            style={{
+              position: "absolute",
+              top: 8,
+              right: 8,
+              display: "flex",
+              gap: 2,
+              opacity: 0,
+              transition: "opacity 0.15s",
+            }}
+          >
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setMoveMenuChatId((prev) => (prev === chat.id ? null : chat.id));
+              }}
+              aria-label="Move chat"
+              style={{
+                width: 20,
+                height: 20,
+                borderRadius: 5,
+                background: "rgba(0,0,0,0.5)",
+                border: "none",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <IconEl name="folder" size={11} color="rgba(255,255,255,0.6)" />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setEditingChatId(chat.id);
+                setEditTitle(chat.title || "");
+              }}
+              aria-label="Rename chat"
+              style={{
+                width: 20,
+                height: 20,
+                borderRadius: 5,
+                background: "rgba(0,0,0,0.5)",
+                border: "none",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <IconEl name="pencil" size={11} color="rgba(255,255,255,0.6)" />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setConfirmDeleteChat({
+                  id: chat.id,
+                  title: chat.title || "this chat",
+                });
+              }}
+              aria-label="Delete chat"
+              style={{
+                width: 20,
+                height: 20,
+                borderRadius: 5,
+                background: "rgba(0,0,0,0.5)",
+                border: "none",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <IconEl name="trash" size={11} color="rgba(255,120,120,0.8)" />
+            </button>
+          </div>
+
+          {moveMenuChatId === chat.id && (
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                position: "absolute",
+                top: 34,
+                right: 8,
+                zIndex: 5,
+                background: "#111827",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: 8,
+                minWidth: 150,
+                boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
+                padding: 4,
+              }}
+            >
+              <div
+                onClick={() => {
+                  onMoveChatToFolder(chat.id, null);
+                  setMoveMenuChatId(null);
+                }}
+                style={{
+                  padding: "6px 8px",
+                  cursor: "pointer",
+                  fontSize: 12,
+                  color: "rgba(255,255,255,0.85)",
+                  borderRadius: 6,
+                }}
+              >
+                Uncategorized
+              </div>
+              {folders.map((folder) => (
+                <div
+                  key={folder._id}
+                  onClick={() => {
+                    onMoveChatToFolder(chat.id, folder._id);
+                    setMoveMenuChatId(null);
+                  }}
+                  style={{
+                    padding: "6px 8px",
+                    cursor: "pointer",
+                    fontSize: 12,
+                    color: "rgba(255,255,255,0.85)",
+                    borderRadius: 6,
+                  }}
+                >
+                  {folder.name}
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
 
   return (
     <>
@@ -371,189 +641,160 @@ const Sidebar = ({
           </div>
 
           <div style={{ flex: 1, overflowY: "auto" }}>
-            {filteredChatList.length ? (
-              filteredChatList.map((chat) => (
-                <div
-                  key={chat.id}
-                  className="chat-item"
-                  onClick={() => {
-                    if (editingChatId !== chat.id) {
-                      onSelectChat(chat.id);
-                      onClose?.();
+            {!creatingFolder ? (
+              <div
+                onClick={() => setCreatingFolder(true)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "6px 12px",
+                  cursor: "pointer",
+                  color: "rgba(255,255,255,0.35)",
+                  fontSize: 11.5,
+                }}
+              >
+                <IconEl name="folderPlus" size={12} color="rgba(255,255,255,0.35)" />
+                New folder
+              </div>
+            ) : (
+              <div style={{ padding: "4px 12px 8px" }}>
+                <input
+                  autoFocus
+                  value={newFolderName}
+                  onChange={(e) => setNewFolderName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleCreateFolder();
+                    else if (e.key === "Escape") {
+                      setCreatingFolder(false);
+                      setNewFolderName("");
                     }
                   }}
+                  onBlur={handleCreateFolder}
+                  placeholder="Folder name"
                   style={{
-                    padding: "8px 12px",
-                    cursor: "pointer",
-                    position: "relative",
-                    borderLeft: `2px solid ${currentChatId === chat.id ? t.primary : "transparent"}`,
-                    background:
-                      currentChatId === chat.id
-                        ? `${t.primary}12`
-                        : "transparent",
-                    transition: "background 0.15s",
+                    width: "100%",
+                    background: "rgba(0,0,0,0.3)",
+                    border: `1px solid ${t.primary}55`,
+                    borderRadius: 5,
+                    padding: "4px 8px",
+                    fontSize: 12,
+                    color: "#fff",
+                    outline: "none",
+                    fontFamily: "inherit",
+                    boxSizing: "border-box",
                   }}
-                  onMouseEnter={(e) => {
-                    if (currentChatId !== chat.id)
-                      e.currentTarget.style.background =
-                        "rgba(255,255,255,0.04)";
-                  }}
-                  onMouseLeave={(e) => {
-                    if (currentChatId !== chat.id)
-                      e.currentTarget.style.background = "transparent";
-                  }}
-                >
-                  {editingChatId === chat.id ? (
-                    <input
-                      autoFocus
-                      value={editTitle}
-                      onChange={(e) => setEditTitle(e.target.value)}
-                      onClick={(e) => e.stopPropagation()}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          if (editTitle.trim())
-                            onRenameChat(chat.id, editTitle.trim());
-                          setEditingChatId(null);
-                        } else if (e.key === "Escape") {
-                          setEditingChatId(null);
-                        }
-                      }}
-                      onBlur={() => {
-                        if (
-                          editTitle.trim() &&
-                          editTitle.trim() !== chat.title
-                        ) {
-                          onRenameChat(chat.id, editTitle.trim());
-                        }
-                        setEditingChatId(null);
-                      }}
-                      style={{
-                        width: "100%",
-                        background: "rgba(0,0,0,0.3)",
-                        border: `1px solid ${t.primary}55`,
-                        borderRadius: 5,
-                        padding: "3px 6px",
-                        fontSize: 12,
-                        color: "#fff",
-                        outline: "none",
-                        fontFamily: "inherit",
-                      }}
-                    />
-                  ) : (
-                    <>
-                      <div
-                        style={{
-                          fontSize: 12,
-                          color:
-                            currentChatId === chat.id
-                              ? "#fff"
-                              : "rgba(255,255,255,0.65)",
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          paddingRight: 44, // action-icons ke liye jagah
-                        }}
-                      >
-                        {chat.title || "New Chat"}
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 11,
-                          color: "rgba(255,255,255,0.28)",
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          marginTop: 2,
-                        }}
-                      >
-                        {chat.messages?.[
-                          chat.messages.length - 1
-                        ]?.content?.slice(0, 40) || "Start a conversation"}
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 10,
-                          color: "rgba(255,255,255,0.18)",
-                          marginTop: 1,
-                        }}
-                      >
-                        {chat.lastUpdated
-                          ? new Date(chat.lastUpdated).toLocaleString()
-                          : "Just now"}
-                      </div>
+                />
+              </div>
+            )}
 
-                      {/* Rename + Delete — hover pe reveal hote hain (CSS rule Dashboard.jsx mein hai) */}
-                      <div
-                        className="chat-item-actions"
-                        style={{
-                          position: "absolute",
-                          top: 8,
-                          right: 8,
-                          display: "flex",
-                          gap: 2,
-                          opacity: 0,
-                          transition: "opacity 0.15s",
+            {folders.map((folder) => {
+              const folderChats = byFolder[folder._id] || [];
+              const isExpanded = expandedFolders[folder._id] ?? false;
+              return (
+                <div key={folder._id}>
+                  <div
+                    onClick={() => toggleFolder(folder._id)}
+                    className="folder-header"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 5,
+                      padding: "6px 12px",
+                      cursor: "pointer",
+                      position: "relative",
+                    }}
+                  >
+                    <IconEl
+                      name={isExpanded ? "chevronDown" : "chevronRight"}
+                      size={11}
+                      color="rgba(255,255,255,0.4)"
+                    />
+                    {editingFolderId === folder._id ? (
+                      <input
+                        autoFocus
+                        value={editFolderName}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => setEditFolderName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            if (editFolderName.trim()) onRenameFolder(folder._id, editFolderName.trim());
+                            setEditingFolderId(null);
+                          } else if (e.key === "Escape") setEditingFolderId(null);
                         }}
+                        onBlur={() => {
+                          if (editFolderName.trim() && editFolderName.trim() !== folder.name) {
+                            onRenameFolder(folder._id, editFolderName.trim());
+                          }
+                          setEditingFolderId(null);
+                        }}
+                        style={{
+                          flex: 1,
+                          background: "rgba(0,0,0,0.3)",
+                          border: `1px solid ${t.primary}55`,
+                          borderRadius: 5,
+                          padding: "2px 6px",
+                          fontSize: 12,
+                          color: "#fff",
+                          outline: "none",
+                          fontFamily: "inherit",
+                        }}
+                      />
+                    ) : (
+                      <span style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", fontWeight: 500, flex: 1 }}>
+                        {folder.name}
+                        <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", marginLeft: 5 }}>
+                          {folderChats.length}
+                        </span>
+                      </span>
+                    )}
+                    <div
+                      className="folder-actions"
+                      style={{ display: "flex", gap: 2, opacity: 0, transition: "opacity 0.15s" }}
+                    >
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingFolderId(folder._id);
+                          setEditFolderName(folder.name);
+                        }}
+                        aria-label="Rename folder"
+                        style={{ width: 18, height: 18, borderRadius: 4, background: "rgba(0,0,0,0.5)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
                       >
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingChatId(chat.id);
-                            setEditTitle(chat.title || "");
-                          }}
-                          aria-label="Rename chat"
-                          style={{
-                            width: 20,
-                            height: 20,
-                            borderRadius: 5,
-                            background: "rgba(0,0,0,0.5)",
-                            border: "none",
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                          }}
-                        >
-                          <IconEl
-                            name="pencil"
-                            size={11}
-                            color="rgba(255,255,255,0.6)"
-                          />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setConfirmDeleteChat({
-                              id: chat.id,
-                              title: chat.title || "this chat",
-                            });
-                          }}
-                          aria-label="Delete chat"
-                          style={{
-                            width: 20,
-                            height: 20,
-                            borderRadius: 5,
-                            background: "rgba(0,0,0,0.5)",
-                            border: "none",
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                          }}
-                        >
-                          <IconEl
-                            name="trash"
-                            size={11}
-                            color="rgba(255,120,120,0.8)"
-                          />
-                        </button>
+                        <IconEl name="pencil" size={10} color="rgba(255,255,255,0.6)" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfirmDeleteFolder({ id: folder._id, name: folder.name });
+                        }}
+                        aria-label="Delete folder"
+                        style={{ width: 18, height: 18, borderRadius: 4, background: "rgba(0,0,0,0.5)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                      >
+                        <IconEl name="trash" size={10} color="rgba(255,120,120,0.8)" />
+                      </button>
+                    </div>
+                  </div>
+                  {isExpanded &&
+                    (folderChats.length ? (
+                      folderChats.map((chat) => renderChatItem(chat))
+                    ) : (
+                      <div style={{ padding: "2px 12px 6px 30px", fontSize: 11, color: "rgba(255,255,255,0.2)" }}>
+                        Empty
                       </div>
-                    </>
-                  )}
+                    ))}
                 </div>
-              ))
-            ) : (
+              );
+            })}
+
+            {folders.length > 0 && uncategorized.length > 0 && (
+              <div style={{ padding: "8px 12px 4px", fontSize: 10.5, color: "rgba(255,255,255,0.25)", textTransform: "uppercase", letterSpacing: 0.4 }}>
+                Uncategorized
+              </div>
+            )}
+
+            {uncategorized.length > 0 && uncategorized.map((chat) => renderChatItem(chat))}
+            {folders.length === 0 && uncategorized.length === 0 && (
               <div
                 style={{
                   padding: 12,
@@ -591,6 +832,18 @@ const Sidebar = ({
             setConfirmDeleteChat(null);
           }}
           onCancel={() => setConfirmDeleteChat(null)}
+          t={t}
+        />
+      )}
+      {confirmDeleteFolder && (
+        <ConfirmDialog
+          title="Delete folder?"
+          message={`"${confirmDeleteFolder.name}" will be deleted. Chats inside will move to Uncategorized.`}
+          onConfirm={() => {
+            onDeleteFolder(confirmDeleteFolder.id);
+            setConfirmDeleteFolder(null);
+          }}
+          onCancel={() => setConfirmDeleteFolder(null)}
           t={t}
         />
       )}

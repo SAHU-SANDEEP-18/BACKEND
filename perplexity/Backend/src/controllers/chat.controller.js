@@ -460,3 +460,22 @@ export async function getSharedChat(req, res) {
 
   res.status(200).json({ title: chat.title, messages });
 }
+
+export async function reactToMessage(req, res) {
+  const { messageId } = req.params;
+  const { reaction } = req.body; // "like" | "dislike" | null
+
+  if (reaction && !["like", "dislike"].includes(reaction)) {
+    return res.status(400).json({ message: "Invalid reaction" });
+  }
+
+  const message = await messageModel.findById(messageId);
+  if (!message || message.role !== "ai") {
+    return res.status(400).json({ message: "Can only react to AI messages" });
+  }
+
+  message.reaction = reaction;
+  await message.save();
+
+  res.status(200).json({ message: "Reaction updated", reaction: message.reaction });
+}
