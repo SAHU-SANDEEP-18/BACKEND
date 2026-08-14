@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useSelector } from "react-redux";
 import { store } from "../../../app/app.store";
 import { initializeSocketConnection } from "../service/chat.socket";
 import { useDispatch } from "react-redux";
@@ -34,7 +35,10 @@ import {
 
 export const useChat = () => {
   const dispatch = useDispatch();
-  const abortControllerRef = useRef(null); // current streaming request ka controller
+  const abortControllerRef = useRef(null);
+  const currentUser = useSelector((state) => state.auth.user);
+  const currentUserIdRef = useRef(null);
+  currentUserIdRef.current = currentUser?._id || currentUser?.id;// current streaming request ka controller
 
   // ── Socket init + status listeners (ek hi baar setup) ──
   useEffect(() => {
@@ -45,11 +49,50 @@ export const useChat = () => {
     socket.on("ai:done", () => dispatch(setAiStatus(null)));
     socket.on("ai:error", () => dispatch(setAiStatus(null)));
 
+    let remoteStreamStarted = {};
+
+    socket.on("chat:user-message", ({ chatId, message, senderId }) => {
+      if (senderId === currentUserIdRef.current) return;
+      dispatch(
+        addNewMessage({
+          chatId,
+          content: message.content,
+          role: "user",
+          quotedText: message.quotedText,
+          attachments: message.attachments,
+        }),
+      );
+    });
+
+    socket.on("chat:ai-thinking", ({ senderId }) => {
+      if (senderId === currentUserIdRef.current) return;
+      dispatch(setAiStatus("thinking"));
+    });
+
+    socket.on("chat:ai-chunk", ({ chatId, chunk, senderId }) => {
+      if (senderId === currentUserIdRef.current) return;
+      if (!remoteStreamStarted[chatId]) {
+        dispatch(startStreamingMessage({ chatId }));
+        remoteStreamStarted[chatId] = true;
+      }
+      dispatch(appendStreamingChunk({ chatId, chunk }));
+    });
+
+    socket.on("chat:ai-done", ({ chatId, senderId }) => {
+      if (senderId === currentUserIdRef.current) return;
+      dispatch(finalizeStreamingMessage({ chatId }));
+      remoteStreamStarted[chatId] = false;
+    });
+
     return () => {
       socket.off("ai:thinking");
       socket.off("ai:typing");
       socket.off("ai:done");
       socket.off("ai:error");
+      socket.off("chat:user-message");
+      socket.off("chat:ai-thinking");
+      socket.off("chat:ai-chunk");
+      socket.off("chat:ai-done");
     };
   }, [dispatch]);
 
@@ -79,6 +122,9 @@ export const useChat = () => {
     );
     dispatch(setcurrentChatId(activeChatId));
     dispatch(clearQuotedText());
+
+    // Local client should show AI thinking immediately for user's own request
+    dispatch(setAiStatus("thinking"));
 
     let finalChatId = activeChatId;
 
@@ -131,10 +177,12 @@ export const useChat = () => {
                 }),
               );
             }
+            dispatch(setAiStatus(null));
           } else if (event.type === "error") {
             dispatch(setError(event.error));
             if (streamStarted)
               dispatch(finalizeStreamingMessage({ chatId: finalChatId }));
+            dispatch(setAiStatus(null));
           }
         },
         controller.signal,
@@ -149,6 +197,7 @@ export const useChat = () => {
       return null;
     } finally {
       dispatch(setLoading(false));
+      dispatch(setAiStatus(null));
       abortControllerRef.current = null;
     }
   }
@@ -166,6 +215,9 @@ export const useChat = () => {
     dispatch(setLoading(true));
     dispatch(setError(null));
     dispatch(removeLastAiMessage({ chatId })); // purana hata do, naya "Thinking..." indicator hi dikhega tab tak
+
+    // Show thinking indicator locally while regenerating
+    dispatch(setAiStatus("thinking"));
 
     let streamStarted = false;
 
@@ -185,10 +237,12 @@ export const useChat = () => {
           } else if (event.type === "done") {
             if (streamStarted) {
               dispatch(finalizeStreamingMessage({ chatId }));
+              dispatch(setAiStatus(null));
             }
           } else if (event.type === "error") {
             dispatch(setError(event.error));
             if (streamStarted) dispatch(finalizeStreamingMessage({ chatId }));
+            dispatch(setAiStatus(null));
           }
         },
         controller.signal,
@@ -199,6 +253,7 @@ export const useChat = () => {
       }
     } finally {
       dispatch(setLoading(false));
+      dispatch(setAiStatus(null));
       abortControllerRef.current = null;
     }
   }
@@ -221,6 +276,9 @@ export const useChat = () => {
       }),
     );
 
+    // Show thinking indicator locally while editing
+    dispatch(setAiStatus("thinking"));
+
     let streamStarted = false;
 
     const controller = new AbortController();
@@ -241,10 +299,12 @@ export const useChat = () => {
           } else if (event.type === "done") {
             if (streamStarted) {
               dispatch(finalizeStreamingMessage({ chatId }));
+              dispatch(setAiStatus(null));
             }
           } else if (event.type === "error") {
             dispatch(setError(event.error));
             if (streamStarted) dispatch(finalizeStreamingMessage({ chatId }));
+            dispatch(setAiStatus(null));
           }
         },
         controller.signal,
@@ -255,6 +315,7 @@ export const useChat = () => {
       }
     } finally {
       dispatch(setLoading(false));
+      dispatch(setAiStatus(null));
       abortControllerRef.current = null;
     }
   }

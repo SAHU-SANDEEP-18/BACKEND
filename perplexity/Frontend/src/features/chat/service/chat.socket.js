@@ -26,3 +26,13 @@ export const getSocket = () => {
   }
   return socket;
 };
+
+export const joinChatRoom = (chatId) => {
+  const socket = getSocket();
+  socket.emit("chat:join", chatId);
+};
+
+export const leaveChatRoom = (chatId) => {
+  const socket = getSocket();
+  socket.emit("chat:leave", chatId);
+};

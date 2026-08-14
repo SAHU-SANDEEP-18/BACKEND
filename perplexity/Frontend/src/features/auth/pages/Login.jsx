@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { useAuth } from "../hook/useAuth";
 import { useSelector } from "react-redux";
 import { Navigate } from "react-router";
@@ -16,6 +16,8 @@ const Login = () => {
   const loading = useSelector((state) => state.auth.loading);
   const error = useSelector((state) => state.auth.error);
   const theme = useSelector((state) => state.theme.theme);
+  const [searchParams] = useSearchParams();
+  const redirect = searchParams.get("redirect") || "/";
   const t = THEMES[theme] || THEMES.teal;
 
   const { handleLogin } = useAuth();
@@ -33,7 +35,7 @@ const Login = () => {
     const result = await handleLogin(payload);
     if (result?.success) {
       toast.success("Logged in.");
-      navigate("/");
+      navigate(redirect);
       return;
     }
 
@@ -43,7 +45,7 @@ const Login = () => {
   };
 
   if (!loading && user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={redirect} replace />;
   }
 
   if (loading) {

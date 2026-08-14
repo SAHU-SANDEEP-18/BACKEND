@@ -163,3 +163,30 @@ export const reactToMessage = async (messageId, reaction) => {
   const response = await api.put(`/messages/${messageId}/reaction`, { reaction });
   return response.data;
 };
+
+export const generateInviteLink = async (chatId) => {
+  const response = await api.post(`/${chatId}/invite-link`);
+  return response.data; // { inviteToken }
+};
+
+export const revokeInviteLink = async (chatId) => {
+  const response = await api.delete(`/${chatId}/invite-link`);
+  return response.data;
+};
+
+export const joinViaLink = async (token) => {
+  const response = await axios.post(`http://localhost:3000/api/join/${token}`, null, {
+    withCredentials: true,
+  });
+  return response.data; // { chatId, alreadyMember }
+};
+
+export const removeCollaborator = async (chatId, userId) => {
+  const response = await api.delete(`/${chatId}/collaborators/${userId}`);
+  return response.data;
+};
+
+export const getCollaborators = async (chatId) => {
+  const response = await api.get(`/${chatId}/collaborators`);
+  return response.data; // { collaborators, inviteToken }
+};

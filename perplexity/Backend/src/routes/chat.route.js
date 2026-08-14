@@ -12,6 +12,10 @@ import {
   unshareChat,
   getSharedChat,
   reactToMessage,
+  generateInviteLink,
+  revokeInviteLink,
+  getCollaborators,
+  removeCollaborator,
 } from "../controllers/chat.controller.js";
 import { authUser } from "../middlewares/auth.middleware.js";
 import { upload } from "../middlewares/upload.middleware.js";
@@ -29,5 +33,10 @@ chatRouter.put("/:chatId/title", authUser, renameChat);
 chatRouter.delete("/delete/:chatId/", authUser, deleteChat);
 chatRouter.get("/shared/:shareId", getSharedChat);
 chatRouter.put("/messages/:messageId/reaction", authUser, reactToMessage);
+
+chatRouter.post("/:chatId/invite-link", authUser, generateInviteLink);
+chatRouter.delete("/:chatId/invite-link", authUser, revokeInviteLink);
+chatRouter.get("/:chatId/collaborators", authUser, getCollaborators);
+chatRouter.delete("/:chatId/collaborators/:userId", authUser, removeCollaborator);
 
 export default chatRouter;

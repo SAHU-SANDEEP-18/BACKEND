@@ -4,7 +4,7 @@ import { useChat } from "../hook/useChat";
 import { THEMES } from "../../../config/themes";
 import { setcurrentChatId, setQuotedText, clearQuotedText, setError } from "../chat.slice";
 import { uploadFiles } from "../service/chat.api";
-
+import { joinChatRoom, leaveChatRoom } from "../service/chat.socket";
 import IconEl from "../components/IconEl";
 import CodeBlock from "../components/CodeBlock";
 import Sidebar from "../components/Sidebar";
@@ -14,6 +14,7 @@ import WelcomeScreen from "../components/WelcomeScreen";
 import ChatInput from "../components/ChatInput";
 import ShortcutsModal from "../components/ShortcutsModal";
 import { exportAsMarkdown, exportAsPDF } from "../utils/exportChat";
+import CollaboratorsModal from "../components/CollaboratorsModal";
 import ShareModal from "../components/ShareModal";
 import MessageSearchBar from "../components/MessageSearchBar";
 import SettingsModal from "../components/SettingsModal";
@@ -54,6 +55,7 @@ const Dashboard = () => {
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [searchBarOpen, setSearchBarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [collaboratorsModalOpen, setCollaboratorsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeMatchIndex, setActiveMatchIndex] = useState(0);
   const messageRefs = useRef({});
@@ -191,6 +193,12 @@ useEffect(() => {
     prevChatIdRef.current = currentChatId;
   }, [selectedMessages, currentChatId]);
 
+  useEffect(() => {
+    if (!currentChatId) return;
+    joinChatRoom(currentChatId);
+    return () => leaveChatRoom(currentChatId);
+  }, [currentChatId]);
+  
   // ── Greeting ──
   const greeting = useMemo(() => {
     const h = new Date().getHours();
@@ -566,7 +574,8 @@ useEffect(() => {
                   >
                     <IconEl name="share" size={13} color="rgba(255,255,255,0.6)" />
                     Share chat
-                  </button><button
+                  </button>
+                  <button
                     disabled={!selectedChat}
                     onClick={() => {
                       exportAsPDF(selectedChat?.title, selectedMessages);
@@ -592,6 +601,33 @@ useEffect(() => {
                   >
                     <IconEl name="download" size={13} color="rgba(255,255,255,0.6)" />
                     Export as PDF
+                  </button>
+                  <button
+                    disabled={!selectedChat}
+                    onClick={() => {
+                      setCollaboratorsModalOpen(true);
+                      setExportMenuOpen(false);
+                    }}
+                    style={{
+                      width: "100%",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "8px 10px",
+                      background: "transparent",
+                      border: "none",
+                      borderRadius: 6,
+                      cursor: selectedChat ? "pointer" : "not-allowed",
+                      opacity: selectedChat ? 1 : 0.4,
+                      fontSize: 12.5,
+                      color: "rgba(255,255,255,0.85)",
+                      textAlign: "left",
+                    }}
+                    onMouseEnter={(e) => selectedChat && (e.currentTarget.style.background = "rgba(255,255,255,0.06)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                  >
+                    <IconEl name="share" size={13} color="rgba(255,255,255,0.6)" />
+                    Invite / Collaborators
                   </button>
                 </div>
               </>
@@ -695,6 +731,9 @@ useEffect(() => {
           onUpdateShareStatus={(status) => dispatch(updateChatShareStatus({ chatId: currentChatId, ...status }))}
           t={t}
         />
+      )}
+      {collaboratorsModalOpen && selectedChat && (
+        <CollaboratorsModal chatId={currentChatId} onClose={() => setCollaboratorsModalOpen(false)} t={t} />
       )}
 
       <style>{`

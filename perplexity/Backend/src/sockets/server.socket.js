@@ -31,6 +31,14 @@ export function initSocket(httpServer) {
       console.log("Socket auth failed:", err.message);
     }
 
+    socket.on("chat:join", async (chatId) => {
+      socket.join(`chat:${chatId}`);
+    });
+
+    socket.on("chat:leave", (chatId) => {
+      socket.leave(`chat:${chatId}`);
+    });
+
     socket.on("disconnect", () => {
       console.log("User disconnected: " + socket.id);
     });
