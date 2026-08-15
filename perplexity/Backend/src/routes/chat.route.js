@@ -33,7 +33,7 @@ chatRouter.put("/:chatId/title", authUser, renameChat);
 chatRouter.delete("/delete/:chatId/", authUser, deleteChat);
 chatRouter.get("/shared/:shareId", getSharedChat);
 chatRouter.put("/messages/:messageId/reaction", authUser, reactToMessage);
-
+chatRouter.post("/upload", authUser, upload.array("files", 4), uploadFiles);
 chatRouter.post("/:chatId/invite-link", authUser, generateInviteLink);
 chatRouter.delete("/:chatId/invite-link", authUser, revokeInviteLink);
 chatRouter.get("/:chatId/collaborators", authUser, getCollaborators);
