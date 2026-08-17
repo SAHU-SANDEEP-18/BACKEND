@@ -15,6 +15,7 @@ import ChatInput from "../components/ChatInput";
 import ShortcutsModal from "../components/ShortcutsModal";
 import { exportAsMarkdown, exportAsPDF } from "../utils/exportChat";
 import CollaboratorsModal from "../components/CollaboratorsModal";
+import CreateImagePage from "../../images/pages/CreateImagePage";
 import ShareModal from "../components/ShareModal";
 import MessageSearchBar from "../components/MessageSearchBar";
 import SettingsModal from "../components/SettingsModal";
@@ -636,7 +637,9 @@ useEffect(() => {
         </div>
 
         {/* Welcome screen or Chat messages */}
-        {!hydrated || (currentChatId && !chatsLoaded) ? (
+        {activeNav === "images" ? (
+          <CreateImagePage t={t} />
+        ) : !hydrated || (currentChatId && !chatsLoaded) ? (
           <div style={{ flex: 1 }} />
         ) : !selectedChat ? (
           <WelcomeScreen
@@ -705,21 +708,23 @@ useEffect(() => {
           </div>
         )}
 
-        <ChatInput
-          message={message}
-          setMessage={setMessage}
-          onSend={handleSend}
-          onStop={handleStopGeneration}
-          isLoading={isLoading}
-          isUploading={isUploading}
-          t={t}
-          quotedText={quotedText}
-          onClearQuote={() => dispatch(clearQuotedText())}
-          pastedContent={pastedContent}
-          setPastedContent={setPastedContent}
-          attachedFiles={attachedFiles}
-          setAttachedFiles={setAttachedFiles}
-        />
+        {activeNav !== "images" && (
+          <ChatInput
+            message={message}
+            setMessage={setMessage}
+            onSend={handleSend}
+            onStop={handleStopGeneration}
+            isLoading={isLoading}
+            isUploading={isUploading}
+            t={t}
+            quotedText={quotedText}
+            onClearQuote={() => dispatch(clearQuotedText())}
+            pastedContent={pastedContent}
+            setPastedContent={setPastedContent}
+            attachedFiles={attachedFiles}
+            setAttachedFiles={setAttachedFiles}
+          />
+        )}
       </div>
 
       {shortcutsOpen && <ShortcutsModal onClose={() => setShortcutsOpen(false)} t={t} />}
