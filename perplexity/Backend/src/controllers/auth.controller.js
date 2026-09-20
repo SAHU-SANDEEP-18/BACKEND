@@ -130,3 +130,8 @@ export async function updateCustomInstructions(req, res) {
 
   res.status(200).json({ message: "Instructions updated", user });
 }
+
+export async function logout(req, res) {
+  res.clearCookie("token");
+  res.status(200).json({ message: "Logged out successfully", success: true });
+}

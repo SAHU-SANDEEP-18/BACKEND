@@ -24,3 +24,8 @@ export const updateCustomInstructions = async (customInstructions) => {
   const response = await api.put("/custom-instructions", { customInstructions });
   return response.data;
 };
+
+export const logout = async () => {
+  const response = await api.post("/logout");
+  return response.data;
+};

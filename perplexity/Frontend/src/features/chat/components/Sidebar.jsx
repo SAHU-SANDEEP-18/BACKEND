@@ -424,48 +424,25 @@ const Sidebar = ({
 
           <div style={{ flex: 1 }} />
 
-          <ThemePicker theme={theme} dispatch={dispatch} setThemeAction={setTheme} t={t} />
-
-          <Tooltip text="Keyboard shortcuts (Ctrl+/)" position="right" t={t}>
-        <button
-          onClick={onOpenShortcuts}
-          aria-label="Keyboard shortcuts"
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 10,
-            background: "transparent",
-            border: "none",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <IconEl name="fileText" size={17} color="rgba(255,255,255,0.3)" />
-        </button>
-      </Tooltip>
-
-      <Tooltip text="Settings" position="right" t={t}>
-        <button
-          onClick={onOpenSettings}
-          aria-label="Settings"
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 10,
-            background: "transparent",
-            border: "none",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            marginTop: 6,
-          }}
-        >
-          <IconEl name="settings" size={18} color="rgba(255,255,255,0.3)" />
-        </button>
-      </Tooltip>
+          <Tooltip text="Settings" position="right" t={t}>
+            <button
+              onClick={onOpenSettings}
+              aria-label="Settings"
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 10,
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <IconEl name="settings" size={18} color="rgba(255,255,255,0.4)" />
+            </button>
+          </Tooltip>
         </div>
 
         {/* Chat list panel — collapsed hone par width 0 ho jaati hai (desktop toggle) */}

@@ -7,7 +7,7 @@ import {
 } from "../service/image.api";
 import ConfirmDialog from "../../chat/components/ConfirmDialog";
 
-const CreateImagePage = ({ t }) => {
+const CreateImagePage = ({ t, initialPrompt, onPromptConsumed }) => {
   const [prompt, setPrompt] = useState("");
   const [previewUrl, setPreviewUrl] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -28,14 +28,23 @@ const CreateImagePage = ({ t }) => {
   }, []);
 
   // ── Sirf preview generate karo (abhi save nahi hua) ──
-  const handleGenerate = () => {
-    if (!prompt.trim()) return;
+  const handleGenerate = (overridePrompt) => {
+    const finalPrompt = (overridePrompt ?? prompt).trim();
+    if (!finalPrompt) return;
     setGenerating(true);
     setError("");
     const seed = Math.floor(Math.random() * 2147483647); // Valid 32-bit seed
-    const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt.trim())}?width=1024&height=576&model=flux&seed=${seed}`;
+    const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?width=1024&height=576&model=flux&seed=${seed}`;
     setPreviewUrl(url);
   };
+
+  // ── Homepage se aaya-hua prompt ho to auto-fill + auto-generate karo ──
+  useEffect(() => {
+    if (!initialPrompt) return;
+    setPrompt(initialPrompt);
+    handleGenerate(initialPrompt);
+    onPromptConsumed?.();
+  }, [initialPrompt]);
 
   // ── Preview ko permanently save karo (ImageKit + DB) ──
   const handleSave = async () => {
@@ -258,13 +267,8 @@ const CreateImagePage = ({ t }) => {
           t={t}
         />
       )}
-    </div>
-  );
-};
 
-export default CreateImagePage;
-
-<style>{`
+      <style>{`
         @keyframes nexus-spin {
           to { transform: rotate(360deg); }
         }
@@ -272,4 +276,9 @@ export default CreateImagePage;
           0% { transform: translateX(-100%); }
           100% { transform: translateX(100%); }
         }
-      `}</style>;
+      `}</style>
+    </div>
+  );
+};
+
+export default CreateImagePage;

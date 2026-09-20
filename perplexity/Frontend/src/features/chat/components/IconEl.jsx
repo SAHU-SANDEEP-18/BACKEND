@@ -29,6 +29,9 @@ import {
   LuChevronDown,
   LuChevronRight,
   LuFolderPlus,
+  LuPresentation,
+  LuPlay,
+  LuCheck,
 } from "react-icons/lu";
 import { TfiReload } from "react-icons/tfi";
 import { LuThumbsUp, LuThumbsDown } from "react-icons/lu";
@@ -70,7 +73,13 @@ const Icons = {
   folderPlus: LuFolderPlus,
   thumbsUp: LuThumbsUp,
   thumbsDown: LuThumbsDown,
+  layout: LuPresentation,
+  presentation: LuPresentation,
+  wand: LuSparkles,
+  play: LuPlay,
+  check: LuCheck,
 };
+
 
 const IconEl = ({ name, size = 18, color = "currentColor" }) => {
   const IconComponent = Icons[name];

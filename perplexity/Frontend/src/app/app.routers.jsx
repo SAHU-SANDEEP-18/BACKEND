@@ -1,11 +1,10 @@
 import { createBrowserRouter, Navigate } from "react-router";
 import Login from "../features/auth/pages/Login";
 import Register from "../features/auth/pages/Register";
-import Dashboard from "../features/chat/pages/Dashboard";
 import SharedChat from "../features/chat/pages/SharedChat";
 import JoinChat from "../features/chat/components/JoinChat";
-import Protected from "../features/auth/components/Protected";
 import AppLayout from "./AppLayout";
+import Landing from "./Landing";
 
 export const router = createBrowserRouter([
   {
@@ -13,11 +12,7 @@ export const router = createBrowserRouter([
     children: [
       {
         path: "/",
-        element: (
-          <Protected>
-            <Dashboard />
-          </Protected>
-        ),
+        element: <Landing />,
       },
       {
         path: "/dashboard",
@@ -38,10 +33,6 @@ export const router = createBrowserRouter([
       {
         path: "/shared/:shareId",
         element: <SharedChat />,
-      },
-      {
-        path: "/join/:token",
-        element: <JoinChat />,
       },
     ],
   },

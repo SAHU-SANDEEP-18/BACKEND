@@ -4,6 +4,7 @@ import authRouter from "./routes/auth.route.js";
 import chatRouter from "./routes/chat.route.js";
 import folderRouter from "./routes/folder.route.js";
 import imageRouter from "./routes/image.route.js";
+import deckRouter from "./routes/deck.route.js";
 import { authUser } from "./middlewares/auth.middleware.js";
 import { joinViaLink } from "./controllers/chat.controller.js";
 import morgan from "morgan";
@@ -34,6 +35,7 @@ app.use("/api/chats", chatRouter);
 app.post("/api/join/:token", authUser, joinViaLink);
 app.use("/api/folders", folderRouter);
 app.use("/api/images/", imageRouter)
+app.use("/api/decks", deckRouter);
 
 // Sentry — routes ke baad, kisi bhi custom error-middleware se pehle
 Sentry.setupExpressErrorHandler(app);

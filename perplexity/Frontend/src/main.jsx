@@ -6,6 +6,7 @@ import App from "./app/App.jsx";
 import { store } from "./app/app.store.js";
 import { Provider } from "react-redux";
 import { setTheme } from "./features/theme/theme.slice";
+import { registerSW } from "virtual:pwa-register";
 
 Sentry.init({
   dsn: import.meta.env.VITE_SENTRY_DSN,
@@ -22,6 +23,23 @@ if (typeof window !== 'undefined') {
     if (event.key === 'app-theme' && event.newValue) {
       store.dispatch(setTheme(event.newValue));
     }
+  });
+}
+
+if (import.meta.env.PROD) {
+  registerSW({
+    onNeedRefresh() {
+      if (confirm("A new version is available. Update now?")) {
+        window.location.reload();
+      }
+    },
+    onOfflineReady() {
+      console.log("App is ready to work offline");
+    },
+  });
+} else if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    registrations.forEach((registration) => registration.unregister());
   });
 }
 

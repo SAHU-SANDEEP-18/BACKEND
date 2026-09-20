@@ -16,6 +16,7 @@ import ShortcutsModal from "../components/ShortcutsModal";
 import { exportAsMarkdown, exportAsPDF } from "../utils/exportChat";
 import CollaboratorsModal from "../components/CollaboratorsModal";
 import CreateImagePage from "../../images/pages/CreateImagePage";
+import CreateDeckPage from "../../deck/pages/CreateDeckPage"
 import ShareModal from "../components/ShareModal";
 import MessageSearchBar from "../components/MessageSearchBar";
 import SettingsModal from "../components/SettingsModal";
@@ -57,6 +58,7 @@ const Dashboard = () => {
   const [searchBarOpen, setSearchBarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [collaboratorsModalOpen, setCollaboratorsModalOpen] = useState(false);
+  const [pendingPrompt, setPendingPrompt] = useState(null); // login se pehle homepage pe daala-gaya-prompt
   const [searchQuery, setSearchQuery] = useState("");
   const [activeMatchIndex, setActiveMatchIndex] = useState(0);
   const messageRefs = useRef({});
@@ -84,6 +86,27 @@ useEffect(() => {
       await handleGetChats();
       setChatsLoaded(true);
     })();
+  }, []);
+
+  // ── Homepage se aaya-hua pending-prompt consume karo (sirf ek-baar) ──
+  useEffect(() => {
+    const prompt = sessionStorage.getItem("pending_prompt");
+    const mode = sessionStorage.getItem("pending_mode");
+    if (!prompt) return;
+
+    sessionStorage.removeItem("pending_prompt");
+    sessionStorage.removeItem("pending_mode");
+
+    if (mode === "image") {
+      setActiveNav("images");
+      setPendingPrompt(prompt);
+    } else if (mode === "slides") {
+      setActiveNav("slides");
+      setPendingPrompt(prompt);
+    } else {
+      setActiveNav("chats");
+      setMessage(prompt); // chat-input mein prefill ho jayega, user "send" khud dabाega
+    }
   }, []);
 
   // ── Init: folders ──
@@ -638,7 +661,14 @@ useEffect(() => {
 
         {/* Welcome screen or Chat messages */}
         {activeNav === "images" ? (
-          <CreateImagePage t={t} />
+          <CreateImagePage t={t} initialPrompt={pendingPrompt} onPromptConsumed={() => setPendingPrompt(null)} />
+        ) : activeNav === "slides" ? (
+          <CreateDeckPage
+            t={t}
+            initialPrompt={pendingPrompt}
+            onPromptConsumed={() => setPendingPrompt(null)}
+            onOpenDeck={(deckId) => console.log("open deck:", deckId)}
+          />
         ) : !hydrated || (currentChatId && !chatsLoaded) ? (
           <div style={{ flex: 1 }} />
         ) : !selectedChat ? (
@@ -708,7 +738,7 @@ useEffect(() => {
           </div>
         )}
 
-        {activeNav !== "images" && (
+        {activeNav !== "images" && activeNav !== "slides" && (
           <ChatInput
             message={message}
             setMessage={setMessage}
@@ -728,7 +758,7 @@ useEffect(() => {
       </div>
 
       {shortcutsOpen && <ShortcutsModal onClose={() => setShortcutsOpen(false)} t={t} />}
-      {settingsOpen && <SettingsModal user={user} onClose={() => setSettingsOpen(false)} t={t} />}
+      {settingsOpen && <SettingsModal user={user} onClose={() => setSettingsOpen(false)} t={t} theme={theme} />}
       {shareModalOpen && selectedChat && (
         <ShareModal
           chat={selectedChat}

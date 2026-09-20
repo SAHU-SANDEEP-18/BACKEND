@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Offline</title>
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #161616;
+      color: #fff;
+      font-family: system-ui, sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+    p { color: rgba(255,255,255,0.5); font-size: 14px; margin-top: 8px; }
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: none;
+      background: #31B8C6;
+      color: #000;
+      cursor: pointer;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <h2>You're offline</h2>
+  <p>Please check your internet connection and try again.</p>
+  <button id="retry">Retry</button>
+  <script>
+    document.getElementById("retry").addEventListener("click", async () => {
+      if ("serviceWorker" in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registrations.map((registration) => registration.unregister()));
+      }
+
+      if ("caches" in window) {
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map((cacheName) => caches.delete(cacheName)));
+      }
+
+      window.location.reload();
+    });
+  </script>
+</body>
+</html>

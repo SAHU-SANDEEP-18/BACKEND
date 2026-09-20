@@ -256,3 +256,46 @@ export async function generateChatTitle(message) {
 
   return response.text;
 }
+
+export async function generateDeckOutlineWithMistral(topic, slideCount = 5) {
+  const systemPrompt = `You are a professional presentation design expert.
+Generate a structured ${slideCount}-slide presentation outline about "${topic}".
+
+You MUST respond with ONLY valid JSON and absolutely nothing else.
+No markdown formatting, no code fences (do not wrap in \`\`\`json), no preamble, no commentary.
+
+The JSON output MUST match this exact schema:
+{
+  "title": "Clear, engaging presentation title",
+  "slides": [
+    {
+      "title": "Slide Title",
+      "bullets": [
+        "Key insight or bullet point 1",
+        "Key insight or bullet point 2",
+        "Key insight or bullet point 3"
+      ],
+      "imagePrompt": "Detailed visual description of a modern, aesthetic photograph or high quality illustration suitable for this slide topic"
+    }
+  ]
+}`;
+
+  const response = await mistralModel.invoke([
+    new SystemMessage(systemPrompt),
+    new HumanMessage(`Create a ${slideCount}-slide presentation outline for topic: "${topic}"`),
+  ]);
+
+  const rawText = response.text || "";
+  const cleaned = rawText.replace(/```json|```/g, "").trim();
+
+  try {
+    const data = JSON.parse(cleaned);
+    if (!data.title || !Array.isArray(data.slides)) {
+      throw new Error("Invalid schema received from Mistral");
+    }
+    return data;
+  } catch (err) {
+    console.error("Mistral PPT JSON parse failed:", cleaned);
+    throw new Error("Failed to generate a valid presentation outline. Please try again.");
+  }
+}
