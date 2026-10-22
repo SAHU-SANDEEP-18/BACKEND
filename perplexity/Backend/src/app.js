@@ -15,7 +15,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { allowedOrigins } from "./config/cors.js";
 const app = express();
-const frontendDistPath = fileURLToPath(new URL("../../Frontend/dist/", import.meta.url));
+const frontendDistPath = fileURLToPath(new URL("../public/dist/", import.meta.url));
 
 // Middleware
 app.use(
