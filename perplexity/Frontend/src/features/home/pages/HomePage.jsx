@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import IconEl from "../../chat/components/IconEl";
 import ThemePicker from "../../chat/components/ThemePicker";
@@ -19,17 +19,57 @@ const FEATURES = [
   { icon: "folder", title: "Folders and export", desc: "Organize chats, export as PDF or Markdown" },
 ];
 
+const STEPS = [
+  { title: "Sign up free", desc: "No credit card, just an email." },
+  { title: "Type your prompt", desc: "Chat, an image idea, or a topic." },
+  { title: "Get results instantly", desc: "Ready to use or refine further." },
+];
+
+const TESTIMONIALS = [
+  { initials: "AR", name: "Aisha R.", role: "Content creator", quote: "I made a full slide deck in under a minute. Didn't expect that." },
+  { initials: "MK", name: "Marco K.", role: "Freelance designer", quote: "Installed it on my phone, works even when my connection drops." },
+  { initials: "PS", name: "Priya S.", role: "Startup founder", quote: "Replaced three separate subscriptions with one tab. Genuinely useful." },
+  { initials: "DT", name: "Daniel T.", role: "Student", quote: "The invite-link collaboration saved my group project — everyone edited the same chat live." },
+  { initials: "NV", name: "Nina V.", role: "Marketing lead", quote: "Image generation is fast enough that I actually use it during meetings now." },
+  { initials: "JC", name: "James C.", role: "Indie hacker", quote: "Clean UI, no clutter. Exactly what I needed to prototype ideas quickly." },
+];
+
 const FAQS = [
   { q: "Is it really free?", a: "Yes, the free plan covers chat, image generation, and presentations." },
   { q: "Do I need to install anything?", a: "No, it works in your browser. Installing it just gives you an app-like experience." },
   { q: "Can others join my chat?", a: "Yes, share an invite link and collaborate together in real time." },
 ];
 
+// Small reusable "eyebrow" label used above every section heading
+const Eyebrow = ({ children }) => (
+  <p
+    style={{
+      fontSize: 12,
+      fontWeight: 600,
+      letterSpacing: 1.2,
+      textTransform: "uppercase",
+      color: "rgba(255,255,255,0.35)",
+      textAlign: "center",
+      margin: "0 0 10px",
+    }}
+  >
+    {children}
+  </p>
+);
+
 const HomePage = ({ t, theme, onGetStarted, onSubmitPrompt }) => {
   const dispatch = useDispatch();
   const [heroPrompt, setHeroPrompt] = useState("");
   const [heroMode, setHeroMode] = useState("chat");
   const [openFaq, setOpenFaq] = useState(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const handleSend = () => {
     if (!heroPrompt.trim()) {
@@ -40,76 +80,74 @@ const HomePage = ({ t, theme, onGetStarted, onSubmitPrompt }) => {
   };
 
   return (
-    <div style={{ background: "#0a0a0f", minHeight: "100vh", color: "#fff", overflow: "hidden" }}>
+    <div style={{ background: "#0a0a0f", minHeight: "100vh", color: "#fff", overflowX: "hidden", overflowY: "visible" }}>
       {/* ── Navbar ── */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "16px 28px",
-          position: "relative",
-          zIndex: 10,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div
-            style={{
-              width: 30,
-              height: 30,
-              borderRadius: 9,
-              background: t.primary,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <IconEl name="sparkles" size={15} color={t.textOn} />
-          </div>
-          <span style={{ fontSize: 14.5, fontWeight: 600 }}>Nexus AI</span>
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 28 }}>
-          {["Features", "Pricing", "FAQ"].map((link) => (
-            <span
-              key={link}
-              onClick={() => document.getElementById(link.toLowerCase())?.scrollIntoView({ behavior: "smooth" })}
-              style={{ fontSize: 13.5, color: "rgba(255,255,255,0.6)", cursor: "pointer" }}
+      <div style={{ position: "relative", zIndex: 10, padding: isMobile ? "12px 14px" : "16px 28px" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            width: "100%",
+            maxWidth: 1280,
+            margin: "0 auto",
+            gap: isMobile ? 8 : 16,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flexShrink: 0 }}>
+            <div
+              style={{
+                width: isMobile ? 26 : 30,
+                height: isMobile ? 26 : 30,
+                borderRadius: 9,
+                background: t.primary,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
             >
-              {link}
-            </span>
-          ))}
-        </div>
+              <IconEl name="sparkles" size={isMobile ? 13 : 15} color={t.textOn} />
+            </div>
+            <span style={{ fontSize: isMobile ? 13 : 14.5, fontWeight: 600, whiteSpace: "nowrap" }}>Nexus AI</span>
+          </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <ThemePicker theme={theme} dispatch={dispatch} setThemeAction={setTheme} t={t} />
-          <button
-            onClick={onGetStarted}
-            style={{
-              padding: "8px 18px",
-              borderRadius: 8,
-              border: "none",
-              background: t.primary,
-              color: t.textOn,
-              fontWeight: 600,
-              fontSize: 13,
-              cursor: "pointer",
-            }}
-          >
-            Log in
-          </button>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: isMobile ? 12 : 28, flex: 1, minWidth: 0 }}>
+            {["Features", "Pricing", "FAQ"].map((link) => (
+              <span
+                key={link}
+                onClick={() => document.getElementById(link.toLowerCase())?.scrollIntoView({ behavior: "smooth" })}
+                style={{ fontSize: isMobile ? 11.5 : 13.5, color: "rgba(255,255,255,0.6)", cursor: "pointer", whiteSpace: "nowrap" }}
+              >
+                {link}
+              </span>
+            ))}
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 8 : 14, marginLeft: "auto", flexShrink: 0 }}>
+            <ThemePicker theme={theme} dispatch={dispatch} setThemeAction={setTheme} t={t} />
+            <button
+              onClick={onGetStarted}
+              style={{
+                padding: isMobile ? "7px 12px" : "8px 18px",
+                borderRadius: 8,
+                border: "none",
+                background: t.primary,
+                color: t.textOn,
+                fontWeight: 600,
+                fontSize: isMobile ? 11.5 : 13,
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              Log in
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* ── Hero (glow + dots background) ── */}
-      <div
-        style={{
-          position: "relative",
-          padding: "48px 20px 80px",
-          textAlign: "center",
-        }}
-      >
-        {/* Dotted starfield */}
+      {/* ── Hero ── */}
+      <div style={{ position: "relative", padding: "48px 20px 88px", textAlign: "center" }}>
         <div
           style={{
             position: "absolute",
@@ -121,7 +159,6 @@ const HomePage = ({ t, theme, onGetStarted, onSubmitPrompt }) => {
             pointerEvents: "none",
           }}
         />
-        {/* Purple/theme glow */}
         <div
           style={{
             position: "absolute",
@@ -137,14 +174,13 @@ const HomePage = ({ t, theme, onGetStarted, onSubmitPrompt }) => {
         />
 
         <div style={{ position: "relative", zIndex: 1 }}>
-          <h1 style={{ fontSize: 34, fontWeight: 600, margin: "20px 0 12px", lineHeight: 1.3 }}>
+          <h1 style={{ fontSize: isMobile ? 27 : 34, fontWeight: 600, margin: "20px 0 12px", lineHeight: 1.3 }}>
             What shall we create today?
           </h1>
           <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", margin: "0 0 36px" }}>
             Chat, generate images, or build a presentation — just describe it.
           </p>
 
-          {/* Glassy chat-input card */}
           <div
             style={{
               maxWidth: 640,
@@ -230,7 +266,7 @@ const HomePage = ({ t, theme, onGetStarted, onSubmitPrompt }) => {
             </div>
           </div>
 
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 20, fontSize: 12, color: "rgba(255,255,255,0.35)" }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 22, fontSize: 12, color: "rgba(255,255,255,0.35)" }}>
             <IconEl name="download" size={13} color="rgba(255,255,255,0.35)" />
             Installable as an app · Free to use
           </div>
@@ -238,66 +274,100 @@ const HomePage = ({ t, theme, onGetStarted, onSubmitPrompt }) => {
       </div>
 
       {/* ── Feature grid ── */}
-      <div id="features" style={{ padding: "40px 20px 56px", maxWidth: 900, margin: "0 auto" }}>
-        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", textAlign: "center", margin: "0 0 24px" }}>Everything you need</p>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
+      <div id="features" style={{ padding: "64px 20px 72px", maxWidth: 980, margin: "0 auto" }}>
+        <Eyebrow>Everything you need</Eyebrow>
+        <h2 style={{ fontSize: isMobile ? 22 : 26, fontWeight: 600, textAlign: "center", margin: "0 0 40px" }}>
+          One workspace, three AI tools
+        </h2>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
           {FEATURES.map((f, i) => (
             <div
               key={i}
               style={{
-                background: "rgba(255,255,255,0.03)",
-                border: f.accent ? `2px solid ${t.primary}` : "0.5px solid rgba(255,255,255,0.08)",
-                borderRadius: 14,
-                padding: "20px 22px",
+                background: f.accent ? `${t.primary}0d` : "rgba(255,255,255,0.03)",
+                border: f.accent ? `1.5px solid ${t.primary}66` : "1px solid rgba(255,255,255,0.08)",
+                borderRadius: 16,
+                padding: "24px 22px",
+                transition: "border-color 0.2s ease",
               }}
             >
-              <IconEl name={f.icon} size={22} color={t.primary} />
-              <p style={{ fontWeight: 600, fontSize: 15, margin: "12px 0 4px" }}>{f.title}</p>
-              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", margin: 0, lineHeight: 1.5 }}>{f.desc}</p>
+              <div
+                style={{
+                  width: 42,
+                  height: 42,
+                  borderRadius: 12,
+                  background: `${t.primary}20`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: 16,
+                }}
+              >
+                <IconEl name={f.icon} size={20} color={t.primary} />
+              </div>
+              <p style={{ fontWeight: 600, fontSize: 15.5, margin: "0 0 6px" }}>{f.title}</p>
+              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", margin: 0, lineHeight: 1.6 }}>{f.desc}</p>
             </div>
           ))}
         </div>
       </div>
 
       {/* ── How it works ── */}
-      <div style={{ padding: "48px 20px", borderTop: "0.5px solid rgba(255,255,255,0.08)", maxWidth: 700, margin: "0 auto" }}>
-        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", textAlign: "center", margin: "0 0 28px" }}>How it works</p>
-        <div style={{ display: "flex", gap: 16, justifyContent: "center", textAlign: "center" }}>
-          {["Sign up free", "Type your prompt", "Get results instantly"].map((step, i) => (
-            <div key={i} style={{ flex: 1, maxWidth: 160 }}>
+      <div style={{ padding: "72px 20px", borderTop: "0.5px solid rgba(255,255,255,0.08)", maxWidth: 760, margin: "0 auto" }}>
+        <Eyebrow>Simple to start</Eyebrow>
+        <h2 style={{ fontSize: isMobile ? 22 : 26, fontWeight: 600, textAlign: "center", margin: "0 0 44px" }}>How it works</h2>
+        <div style={{ position: "relative", display: "flex", gap: 16, justifyContent: "center", textAlign: "center" }}>
+          {!isMobile && (
+            <div
+              style={{
+                position: "absolute",
+                top: 22,
+                left: "16%",
+                right: "16%",
+                height: 1,
+                background: "repeating-linear-gradient(90deg, rgba(255,255,255,0.15) 0 6px, transparent 6px 12px)",
+                zIndex: 0,
+              }}
+            />
+          )}
+          {STEPS.map((step, i) => (
+            <div key={i} style={{ flex: 1, maxWidth: 200, position: "relative", zIndex: 1 }}>
               <div
                 style={{
-                  width: 36,
-                  height: 36,
+                  width: 44,
+                  height: 44,
                   borderRadius: "50%",
-                  background: `${t.primary}22`,
-                  color: t.primary,
+                  background: t.primary,
+                  color: t.textOn,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontSize: 14,
-                  fontWeight: 600,
-                  margin: "0 auto 10px",
+                  fontSize: 16,
+                  fontWeight: 700,
+                  margin: "0 auto 14px",
+                  boxShadow: `0 8px 24px ${t.primary}44`,
                 }}
               >
                 {i + 1}
               </div>
-              <p style={{ fontSize: 13.5, color: "rgba(255,255,255,0.6)", margin: 0 }}>{step}</p>
+              <p style={{ fontSize: 15, fontWeight: 600, margin: "0 0 6px" }}>{step.title}</p>
+              <p style={{ fontSize: 12.5, color: "rgba(255,255,255,0.45)", margin: 0, lineHeight: 1.5 }}>{step.desc}</p>
             </div>
           ))}
         </div>
       </div>
 
       {/* ── Pricing ── */}
-      <div id="pricing" style={{ padding: "48px 20px", borderTop: "0.5px solid rgba(255,255,255,0.08)", maxWidth: 700, margin: "0 auto" }}>
-        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", textAlign: "center", margin: "0 0 28px" }}>Simple pricing</p>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
-          <div style={{ background: "rgba(255,255,255,0.03)", border: "0.5px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: 24 }}>
-            <p style={{ fontWeight: 600, fontSize: 14, margin: "0 0 4px" }}>Free</p>
-            <p style={{ fontSize: 28, fontWeight: 700, margin: "0 0 16px" }}>$0</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 18 }}>
+      <div id="pricing" style={{ padding: "72px 20px", borderTop: "0.5px solid rgba(255,255,255,0.08)", maxWidth: 760, margin: "0 auto" }}>
+        <Eyebrow>Pricing</Eyebrow>
+        <h2 style={{ fontSize: isMobile ? 22 : 26, fontWeight: 600, textAlign: "center", margin: "0 0 40px" }}>Simple, transparent pricing</h2>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 18 }}>
+          <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: 26 }}>
+            <p style={{ fontWeight: 600, fontSize: 14, margin: "0 0 6px", color: "rgba(255,255,255,0.6)" }}>Free</p>
+            <p style={{ fontSize: 32, fontWeight: 700, margin: "0 0 18px" }}>$0</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 22 }}>
               {["Unlimited chat", "AI image generation", "Presentation builder", "Real-time collaboration"].map((item, i) => (
-                <span key={i} style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "flex", alignItems: "center", gap: 6 }}>
+                <span key={i} style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", display: "flex", alignItems: "center", gap: 8 }}>
                   <IconEl name="check" size={13} color={t.primary} />
                   {item}
                 </span>
@@ -305,18 +375,18 @@ const HomePage = ({ t, theme, onGetStarted, onSubmitPrompt }) => {
             </div>
             <button
               onClick={onGetStarted}
-              style={{ width: "100%", padding: "10px 0", borderRadius: 8, border: "none", background: t.primary, color: t.textOn, fontWeight: 600, fontSize: 13, cursor: "pointer" }}
+              style={{ width: "100%", padding: "11px 0", borderRadius: 10, border: "none", background: t.primary, color: t.textOn, fontWeight: 600, fontSize: 13.5, cursor: "pointer" }}
             >
               Get started
             </button>
           </div>
 
-          <div style={{ background: "rgba(255,255,255,0.03)", border: `2px solid ${t.primary}`, borderRadius: 14, padding: 24, position: "relative" }}>
+          <div style={{ background: `${t.primary}0d`, border: `1.5px solid ${t.primary}66`, borderRadius: 16, padding: 26, position: "relative" }}>
             <span
               style={{
                 position: "absolute",
-                top: -11,
-                left: 20,
+                top: -12,
+                left: 24,
                 background: t.primary,
                 color: t.textOn,
                 fontSize: 11,
@@ -327,71 +397,167 @@ const HomePage = ({ t, theme, onGetStarted, onSubmitPrompt }) => {
             >
               Coming soon
             </span>
-            <p style={{ fontWeight: 600, fontSize: 14, margin: "0 0 4px" }}>Pro</p>
-            <p style={{ fontSize: 28, fontWeight: 700, margin: "0 0 16px", color: "rgba(255,255,255,0.4)" }}>TBD</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 18 }}>
+            <p style={{ fontWeight: 600, fontSize: 14, margin: "0 0 6px", color: "rgba(255,255,255,0.6)" }}>Pro</p>
+            <p style={{ fontSize: 32, fontWeight: 700, margin: "0 0 18px", color: "rgba(255,255,255,0.4)" }}>TBD</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 22 }}>
               {["Everything in Free", "Higher generation limits", "Priority support", "Team workspaces"].map((item, i) => (
-                <span key={i} style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "flex", alignItems: "center", gap: 6 }}>
+                <span key={i} style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", display: "flex", alignItems: "center", gap: 8 }}>
                   <IconEl name="check" size={13} color={t.primary} />
                   {item}
                 </span>
               ))}
             </div>
-            <button disabled style={{ width: "100%", padding: "10px 0", borderRadius: 8, border: "1px solid rgba(255,255,255,0.15)", background: "transparent", color: "rgba(255,255,255,0.4)", fontWeight: 600, fontSize: 13, cursor: "not-allowed" }}>
+            <button
+              disabled
+              style={{ width: "100%", padding: "11px 0", borderRadius: 10, border: "1px solid rgba(255,255,255,0.15)", background: "transparent", color: "rgba(255,255,255,0.4)", fontWeight: 600, fontSize: 13.5, cursor: "not-allowed" }}
+            >
               Notify me
             </button>
           </div>
         </div>
       </div>
 
-      {/* ── Testimonials ── */}
-      <div style={{ padding: "48px 20px", borderTop: "0.5px solid rgba(255,255,255,0.08)", maxWidth: 700, margin: "0 auto" }}>
-        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", textAlign: "center", margin: "0 0 24px" }}>What early users say</p>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
-          {["I made a full slide deck in under a minute. Didn't expect that.", "Installed it on my phone, works even when my connection drops."].map((quote, i) => (
-            <div key={i} style={{ background: "rgba(255,255,255,0.03)", border: "0.5px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: "18px 20px" }}>
-              <p style={{ fontSize: 13.5, margin: "0 0 10px", lineHeight: 1.6, color: "rgba(255,255,255,0.75)" }}>{quote}</p>
-              <p style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", margin: 0 }}>— Early user</p>
-            </div>
-          ))}
+      {/* ── Testimonials (auto-scrolling marquee) ── */}
+      <div style={{ padding: "72px 0", borderTop: "0.5px solid rgba(255,255,255,0.08)", overflow: "hidden" }}>
+        <div style={{ maxWidth: 760, margin: "0 auto", padding: "0 20px" }}>
+          <Eyebrow>Loved by early users</Eyebrow>
+          <h2 style={{ fontSize: isMobile ? 22 : 26, fontWeight: 600, textAlign: "center", margin: "0 0 40px" }}>What people are saying</h2>
         </div>
+
+        <div
+          className="nexus-marquee-mask"
+          style={{ position: "relative", width: "100%", overflow: "hidden" }}
+        >
+          <div className="nexus-marquee-track" style={{ display: "flex", gap: 16, width: "max-content" }}>
+            {[...TESTIMONIALS, ...TESTIMONIALS].map((tItem, i) => (
+              <div
+                key={i}
+                style={{
+                  background: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: 16,
+                  padding: "22px 24px",
+                  width: 320,
+                  flexShrink: 0,
+                }}
+              >
+                <p style={{ fontSize: 14, margin: "0 0 18px", lineHeight: 1.65, color: "rgba(255,255,255,0.8)" }}>"{tItem.quote}"</p>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div
+                    style={{
+                      width: 30,
+                      height: 30,
+                      borderRadius: "50%",
+                      background: `${t.primary}25`,
+                      color: t.primary,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 11.5,
+                      fontWeight: 700,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {tItem.initials}
+                  </div>
+                  <div>
+                    <p style={{ fontSize: 12.5, color: "rgba(255,255,255,0.75)", margin: 0, fontWeight: 600 }}>{tItem.name}</p>
+                    <p style={{ fontSize: 11.5, color: "rgba(255,255,255,0.35)", margin: 0 }}>{tItem.role}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <style>{`
+          .nexus-marquee-mask {
+            -webkit-mask-image: linear-gradient(90deg, transparent 0, black 60px, black calc(100% - 60px), transparent 100%);
+            mask-image: linear-gradient(90deg, transparent 0, black 60px, black calc(100% - 60px), transparent 100%);
+          }
+          .nexus-marquee-track {
+            animation: nexus-marquee-scroll 32s linear infinite;
+          }
+          .nexus-marquee-mask:hover .nexus-marquee-track {
+            animation-play-state: paused;
+          }
+          @keyframes nexus-marquee-scroll {
+            from { transform: translateX(0); }
+            to { transform: translateX(-50%); }
+          }
+        `}</style>
       </div>
 
       {/* ── FAQ ── */}
-      <div id="faq" style={{ padding: "48px 20px", borderTop: "0.5px solid rgba(255,255,255,0.08)", maxWidth: 640, margin: "0 auto" }}>
-        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", textAlign: "center", margin: "0 0 20px" }}>Frequently asked</p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div id="faq" style={{ padding: "72px 20px", borderTop: "0.5px solid rgba(255,255,255,0.08)", maxWidth: 680, margin: "0 auto" }}>
+        <Eyebrow>Questions</Eyebrow>
+        <h2 style={{ fontSize: isMobile ? 22 : 26, fontWeight: 600, textAlign: "center", margin: "0 0 32px" }}>Frequently asked</h2>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {FAQS.map((faq, i) => (
             <div
               key={i}
               onClick={() => setOpenFaq(openFaq === i ? null : i)}
-              style={{ border: "0.5px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "14px 16px", cursor: "pointer" }}
+              style={{
+                border: `1px solid ${openFaq === i ? `${t.primary}55` : "rgba(255,255,255,0.08)"}`,
+                background: openFaq === i ? `${t.primary}0a` : "transparent",
+                borderRadius: 12,
+                padding: "16px 18px",
+                cursor: "pointer",
+                transition: "border-color 0.2s ease, background 0.2s ease",
+              }}
             >
-              <p style={{ fontSize: 14, fontWeight: 500, margin: 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <p style={{ fontSize: 14.5, fontWeight: 500, margin: 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 {faq.q}
                 <IconEl name={openFaq === i ? "chevronDown" : "chevronRight"} size={13} color="rgba(255,255,255,0.4)" />
               </p>
-              {openFaq === i && <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", margin: "8px 0 0", lineHeight: 1.6 }}>{faq.a}</p>}
+              {openFaq === i && <p style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", margin: "10px 0 0", lineHeight: 1.65 }}>{faq.a}</p>}
             </div>
           ))}
         </div>
       </div>
 
       {/* ── Final CTA ── */}
-      <div style={{ textAlign: "center", padding: "56px 20px", borderTop: "0.5px solid rgba(255,255,255,0.08)" }}>
-        <h2 style={{ fontSize: 22, fontWeight: 600, margin: "0 0 8px" }}>Ready to try it?</h2>
-        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", margin: "0 0 18px" }}>Free to use, no hidden costs</p>
-        <button
-          onClick={onGetStarted}
-          style={{ padding: "12px 28px", borderRadius: 10, border: "none", background: t.primary, color: t.textOn, fontWeight: 600, fontSize: 14, cursor: "pointer" }}
-        >
-          Get started free
-        </button>
+      <div style={{ position: "relative", textAlign: "center", padding: "80px 20px", borderTop: "0.5px solid rgba(255,255,255,0.08)", overflow: "hidden" }}>
+        <div
+          style={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: 500,
+            height: 260,
+            background: `radial-gradient(ellipse, ${t.primary}30 0%, transparent 70%)`,
+            filter: "blur(40px)",
+            pointerEvents: "none",
+          }}
+        />
+        <div style={{ position: "relative", zIndex: 1 }}>
+          <h2 style={{ fontSize: isMobile ? 22 : 26, fontWeight: 600, margin: "0 0 10px" }}>Ready to try it?</h2>
+          <p style={{ fontSize: 13.5, color: "rgba(255,255,255,0.45)", margin: "0 0 22px" }}>Free to use, no hidden costs</p>
+          <button
+            onClick={onGetStarted}
+            style={{ padding: "13px 30px", borderRadius: 10, border: "none", background: t.primary, color: t.textOn, fontWeight: 600, fontSize: 14, cursor: "pointer", boxShadow: `0 12px 30px ${t.primary}33` }}
+          >
+            Get started free
+          </button>
+        </div>
       </div>
 
       {/* ── Footer ── */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 24px", borderTop: "0.5px solid rgba(255,255,255,0.08)", maxWidth: 900, margin: "0 auto" }}>
-        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", margin: 0 }}>Nexus AI</p>
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 12,
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: "24px",
+          borderTop: "0.5px solid rgba(255,255,255,0.08)",
+          maxWidth: 980,
+          margin: "0 auto",
+        }}
+      >
+        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", margin: 0 }}>© Nexus AI</p>
         <div style={{ display: "flex", gap: 18 }}>
           {["About", "Privacy", "Terms"].map((link) => (
             <span key={link} style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", cursor: "pointer" }}>

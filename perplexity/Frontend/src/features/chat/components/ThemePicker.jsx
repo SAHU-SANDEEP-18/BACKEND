@@ -42,8 +42,8 @@ const ThemePicker = ({ theme, dispatch, setThemeAction, t }) => {
         <div
           style={{
             position: "absolute",
-            left: "calc(100% + 10px)",
-            bottom: 0,
+            top: "calc(100% + 8px)",
+            right: 0,
             background: "#161616",
             border: "1px solid rgba(255,255,255,0.1)",
             borderRadius: 12,
@@ -53,6 +53,7 @@ const ThemePicker = ({ theme, dispatch, setThemeAction, t }) => {
             gap: 8,
             zIndex: 60,
             boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
+            minWidth: 130,
           }}
         >
           {THEME_OPTIONS.map((opt) => (

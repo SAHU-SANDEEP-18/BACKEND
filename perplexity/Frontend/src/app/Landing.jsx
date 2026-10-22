@@ -34,6 +34,7 @@ const Landing = () => {
   return (
     <HomePage
       t={t}
+      theme={theme}
       onGetStarted={() => navigate("/login")}
       onSubmitPrompt={handleSubmitPrompt}
     />
