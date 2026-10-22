@@ -21,7 +21,7 @@ process.on("uncaughtException", (err) => {
 const httpServer = http.createServer(app)
 initSocket(httpServer)
 
-connectToDB();
+await connectToDB();
 
 httpServer.listen(3000, () => {
   console.log("server is running port on 3000");

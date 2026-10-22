@@ -18,9 +18,7 @@ const chatSchema = new mongoose.Schema(
     },
     shareId: {
       type: String,
-      default: null,
-      unique: true,
-      sparse: true, // taaki multiple null-values allowed rahein (unique sirf non-null pe apply ho)
+      default: undefined,
     },
     folderId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -41,7 +39,15 @@ const chatSchema = new mongoose.Schema(
       default: null,
     },
   },
-  { timestamps: true },
+  { timestamps: true, autoIndex: false },
+);
+
+chatSchema.index(
+  { shareId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { shareId: { $type: "string" } },
+  },
 );
 
 const chatModel = mongoose.model("Chat", chatSchema);
