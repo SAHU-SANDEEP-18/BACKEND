@@ -157,7 +157,8 @@ export async function sendMessage(req, res) {
   // Jab client (browser) fetch abort kare, ye event fire hota hai —
   // isse hamare loop ko pata chalta hai ki ab chunks bhejna band karna hai,
   // AUR abortController.abort() se Gemini ki API-call ko bhi khud cancel kar dete hain
-  req.on("close", () => {
+  res.on("close", () => {
+    if (res.writableEnded) return;
     clientDisconnected = true;
     abortController.abort();
   });
@@ -269,7 +270,8 @@ export async function regenerateResponse(req, res) {
   let clientDisconnected = false;
   const abortController = new AbortController();
 
-  req.on("close", () => {
+  res.on("close", () => {
+    if (res.writableEnded) return;
     clientDisconnected = true;
     abortController.abort();
   });
@@ -401,7 +403,8 @@ export async function editMessage(req, res) {
   let clientDisconnected = false;
   const abortController = new AbortController();
 
-  req.on("close", () => {
+  res.on("close", () => {
+    if (res.writableEnded) return;
     clientDisconnected = true;
     abortController.abort();
   });
