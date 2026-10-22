@@ -21,6 +21,11 @@ const frontendDistPath = fileURLToPath(new URL("../public/dist/", import.meta.ur
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" }, // taaki ImageKit-images load ho sakein frontend mein
+    contentSecurityPolicy: {
+      directives: {
+        connectSrc: ["'self'", "https://*.ingest.us.sentry.io"],
+      },
+    },
   }),
 );
 app.use(express.json());
