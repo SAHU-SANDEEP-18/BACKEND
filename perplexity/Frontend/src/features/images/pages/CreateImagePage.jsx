@@ -29,7 +29,8 @@ const CreateImagePage = ({ t, initialPrompt, onPromptConsumed }) => {
 
   // ── Sirf preview generate karo (abhi save nahi hua) ──
   const handleGenerate = (overridePrompt) => {
-    const finalPrompt = (overridePrompt ?? prompt).trim();
+    const promptValue = overridePrompt ?? prompt;
+    const finalPrompt = typeof promptValue === "string" ? promptValue.trim() : "";
     if (!finalPrompt) return;
     setGenerating(true);
     setError("");
@@ -56,7 +57,7 @@ const CreateImagePage = ({ t, initialPrompt, onPromptConsumed }) => {
       setGallery((prev) => [data.image, ...prev]);
       setPreviewUrl(null);
       setPrompt("");
-    } catch (err) {
+    } catch {
       setError("It couldn’t be saved. Please try again.");
     } finally {
       setSaving(false);
@@ -105,7 +106,7 @@ const CreateImagePage = ({ t, initialPrompt, onPromptConsumed }) => {
           }}
         />
         <button
-          onClick={handleGenerate}
+          onClick={() => handleGenerate()}
           style={{
             padding: "0 18px",
             borderRadius: 8,

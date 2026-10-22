@@ -24,6 +24,7 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         connectSrc: ["'self'", "https://*.ingest.us.sentry.io"],
+        imgSrc: ["'self'", "data:", "blob:", "https://image.pollinations.ai", "https://ik.imagekit.io"],
       },
     },
   }),
