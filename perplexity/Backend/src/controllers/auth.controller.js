@@ -1,6 +1,19 @@
 import userModel from "../models/user.model.js";
 import jwt from "jsonwebtoken";
 
+const authCookieOptions = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+};
+
+const clearAuthCookieOptions = {
+  httpOnly: authCookieOptions.httpOnly,
+  secure: authCookieOptions.secure,
+  sameSite: authCookieOptions.sameSite,
+};
+
 export async function register(req, res) {
   const { username, email, password } = req.body;
   const usUserAlreadyExists = await userModel.findOne({
@@ -83,7 +96,7 @@ export async function login(req, res) {
     expiresIn: "7d",
   });
 
-  res.cookie("token", token);
+  res.cookie("token", token, authCookieOptions);
 
   res.status(200).json({
     message: "Login successful",
@@ -132,6 +145,6 @@ export async function updateCustomInstructions(req, res) {
 }
 
 export async function logout(req, res) {
-  res.clearCookie("token");
+  res.clearCookie("token", clearAuthCookieOptions);
   res.status(200).json({ message: "Logged out successfully", success: true });
 }
