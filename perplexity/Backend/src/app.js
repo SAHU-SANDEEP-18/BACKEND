@@ -11,6 +11,7 @@ import morgan from "morgan";
 import cors from "cors";
 import helmet from "helmet";
 import * as Sentry from "@sentry/node";
+import { allowedOrigins } from "./config/cors.js";
 const app = express();
 
 // Middleware
@@ -24,9 +25,9 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(morgan("dev"));
 app.use(cors({
-    origin: ["http://localhost:5173", process.env.FRONTEND_URL].filter(Boolean),
+    origin: allowedOrigins,
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE"]
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
 }))
 
 // Routes
