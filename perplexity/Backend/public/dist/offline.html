@@ -35,19 +35,16 @@
   <p>Please check your internet connection and try again.</p>
   <button id="retry">Retry</button>
   <script>
-    document.getElementById("retry").addEventListener("click", async () => {
-      if ("serviceWorker" in navigator) {
-        const registrations = await navigator.serviceWorker.getRegistrations();
-        await Promise.all(registrations.map((registration) => registration.unregister()));
-      }
+    const retryKey = "nexus-offline-retry";
+    const retry = () => window.location.reload();
 
-      if ("caches" in window) {
-        const cacheNames = await caches.keys();
-        await Promise.all(cacheNames.map((cacheName) => caches.delete(cacheName)));
-      }
+    document.getElementById("retry").addEventListener("click", retry);
+    window.addEventListener("online", retry, { once: true });
 
-      window.location.reload();
-    });
+    if (navigator.onLine && !sessionStorage.getItem(retryKey)) {
+      sessionStorage.setItem(retryKey, "1");
+      window.setTimeout(retry, 1200);
+    }
   </script>
 </body>
 </html>

@@ -2,6 +2,7 @@ import IconEl from "./IconEl";
 import ConfirmDialog from "./ConfirmDialog";
 import Tooltip from "./Tooltip";
 import ThemePicker from "./ThemePicker";
+import PwaInstallButton from "../../../components/PwaInstallButton";
 import { setTheme } from "../../theme/theme.slice";
 import { THEME_OPTIONS, NAV_ITEMS } from "../constants";
 
@@ -424,6 +425,9 @@ const Sidebar = ({
 
           <div style={{ flex: 1 }} />
 
+          <Tooltip text="Install app" position="right" t={t}>
+            <PwaInstallButton t={t} compact />
+          </Tooltip>
           <Tooltip text="Settings" position="right" t={t}>
             <button
               onClick={onOpenSettings}

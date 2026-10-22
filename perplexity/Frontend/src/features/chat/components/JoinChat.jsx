@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { joinViaLink } from "../service/chat.api";
+import { setcurrentChatId } from "../chat.slice";
 
 const JoinChat = () => {
   const { token } = useParams();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const currentUser = useSelector((state) => state.auth.user);
   const [error, setError] = useState("");
 
@@ -18,12 +20,13 @@ const JoinChat = () => {
     (async () => {
       try {
         const data = await joinViaLink(token);
-        navigate(`/dashboard?chatId=${data.chatId}`); // apne dashboard-route ke hisaab se adjust karna
+        dispatch(setcurrentChatId(data.chatId));
+        navigate("/", { replace: true });
       } catch (err) {
         setError(err.response?.data?.message || "Invalid or expired invite link");
       }
     })();
-  }, [currentUser, token]);
+  }, [currentUser, dispatch, navigate, token]);
 
   if (error) {
     return <div style={{ color: "#fff", padding: 40, textAlign: "center" }}>{error}</div>;

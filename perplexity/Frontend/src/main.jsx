@@ -8,6 +8,8 @@ import { Provider } from "react-redux";
 import { setTheme } from "./features/theme/theme.slice";
 import { registerSW } from "virtual:pwa-register";
 
+sessionStorage.removeItem("nexus-offline-retry");
+
 Sentry.init({
   dsn: import.meta.env.VITE_SENTRY_DSN,
   integrations: [

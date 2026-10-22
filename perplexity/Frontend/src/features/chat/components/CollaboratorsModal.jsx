@@ -7,6 +7,7 @@ const CollaboratorsModal = ({ chatId, onClose, t }) => {
   const [inviteToken, setInviteToken] = useState(null);
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -16,6 +17,7 @@ const CollaboratorsModal = ({ chatId, onClose, t }) => {
         setInviteToken(data.inviteToken || null);
       } catch (err) {
         console.error(err);
+        setError(err.response?.data?.message || "Could not load collaborators.");
       }
     })();
   }, [chatId]);
@@ -24,30 +26,41 @@ const CollaboratorsModal = ({ chatId, onClose, t }) => {
 
   const handleGenerate = async () => {
     setLoading(true);
+    setError("");
     try {
       const data = await generateInviteLink(chatId);
+      if (!data.inviteToken) throw new Error("The server did not return an invite token.");
       setInviteToken(data.inviteToken);
     } catch (err) {
       console.error(err);
+      setError(err.response?.data?.message || err.message || "Could not generate invite link.");
     } finally {
       setLoading(false);
     }
   };
 
   const handleRevoke = async () => {
+    setError("");
     try {
       await revokeInviteLink(chatId);
       setInviteToken(null);
     } catch (err) {
       console.error(err);
+      setError(err.response?.data?.message || "Could not revoke invite link.");
     }
   };
 
-  const handleCopy = () => {
+  const handleCopy = async () => {
     if (!inviteLink) return;
-    navigator.clipboard.writeText(inviteLink);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    setError("");
+    try {
+      await navigator.clipboard.writeText(inviteLink);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch (err) {
+      console.error(err);
+      setError("Could not copy the link. Select and copy it manually.");
+    }
   };
 
   const handleRemove = async (userId) => {
@@ -56,6 +69,7 @@ const CollaboratorsModal = ({ chatId, onClose, t }) => {
       setCollaborators((prev) => prev.filter((c) => c.user._id !== userId));
     } catch (err) {
       console.error(err);
+      setError(err.response?.data?.message || "Could not remove collaborator.");
     }
   };
 
@@ -72,6 +86,12 @@ const CollaboratorsModal = ({ chatId, onClose, t }) => {
           <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#fff" }}>Collaborators</p>
           <button onClick={onClose} style={{ background: "transparent", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.5)", fontSize: 16 }}>×</button>
         </div>
+
+        {error && (
+          <p role="alert" style={{ color: "#f87171", fontSize: 12, margin: "0 0 10px" }}>
+            {error}
+          </p>
+        )}
 
         {inviteLink ? (
           <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
@@ -93,7 +113,7 @@ const CollaboratorsModal = ({ chatId, onClose, t }) => {
             disabled={loading}
             style={{ width: "100%", padding: "9px 0", borderRadius: 8, border: "none", background: t.primary, color: t.textOn, cursor: "pointer", fontSize: 12.5, fontWeight: 500, marginBottom: 8 }}
           >
-            Generate Invite Link
+            {loading ? "Generating..." : "Generate Invite Link"}
           </button>
         )}
 

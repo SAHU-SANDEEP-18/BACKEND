@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import IconEl from "../../chat/components/IconEl";
 import ThemePicker from "../../chat/components/ThemePicker";
+import PwaInstallButton from "../../../components/PwaInstallButton";
 import { setTheme } from "../../theme/theme.slice";
 
 const MODES = [
@@ -126,6 +127,7 @@ const HomePage = ({ t, theme, onGetStarted, onSubmitPrompt }) => {
 
           <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 8 : 14, marginLeft: "auto", flexShrink: 0 }}>
             <ThemePicker theme={theme} dispatch={dispatch} setThemeAction={setTheme} t={t} />
+            <PwaInstallButton t={t} compact={isMobile} />
             <button
               onClick={onGetStarted}
               style={{
