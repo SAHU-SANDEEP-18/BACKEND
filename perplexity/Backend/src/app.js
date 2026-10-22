@@ -11,8 +11,11 @@ import morgan from "morgan";
 import cors from "cors";
 import helmet from "helmet";
 import * as Sentry from "@sentry/node";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { allowedOrigins } from "./config/cors.js";
 const app = express();
+const frontendDistPath = fileURLToPath(new URL("../../Frontend/dist/", import.meta.url));
 
 // Middleware
 app.use(
@@ -37,6 +40,12 @@ app.post("/api/join/:token", authUser, joinViaLink);
 app.use("/api/folders", folderRouter);
 app.use("/api/images/", imageRouter)
 app.use("/api/decks", deckRouter);
+
+app.use(express.static(frontendDistPath));
+app.get("/{*path}", (req, res, next) => {
+  if (req.path.startsWith("/api/")) return next();
+  res.sendFile(join(frontendDistPath, "index.html"));
+});
 
 // Sentry — routes ke baad, kisi bhi custom error-middleware se pehle
 Sentry.setupExpressErrorHandler(app);
