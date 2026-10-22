@@ -16,7 +16,15 @@ export const sendMessageStream = async ({ message, chatId, quotedText, attachmen
   });
 
   if (!response.ok || !response.body) {
-    throw new Error("Failed to start message stream");
+    const errorText = await response.text();
+    let errorMessage = `Failed to start message stream (${response.status})`;
+    try {
+      const errorData = JSON.parse(errorText);
+      if (errorData.message) errorMessage = errorData.message;
+    } catch {
+      if (errorText) errorMessage = errorText;
+    }
+    throw new Error(errorMessage);
   }
 
   const reader = response.body.getReader();

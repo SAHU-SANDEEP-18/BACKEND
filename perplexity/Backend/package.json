@@ -15,7 +15,6 @@
     "@langchain/core": "^1.2.1",
     "@langchain/google-genai": "^2.2.0",
     "@langchain/langgraph": "^1.4.7",
-    "@langchain/mistralai": "^1.2.0",
     "@pinecone-database/pinecone": "^6.1.4",
     "@sentry/node": "^10.70.0",
     "@tavily/core": "^0.7.6",

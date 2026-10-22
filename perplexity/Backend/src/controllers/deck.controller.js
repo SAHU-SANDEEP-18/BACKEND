@@ -1,5 +1,5 @@
 import deckModel from "../models/deck.model.js";
-import { generateDeckOutlineWithMistral } from "../services/ai.service.js";
+import { generateDeckOutlineWithGemini } from "../services/ai.service.js";
 
 export async function generateOutlineController(req, res) {
   const { topic, slideCount } = req.body;
@@ -8,11 +8,11 @@ export async function generateOutlineController(req, res) {
   }
 
   try {
-    const outline = await generateDeckOutlineWithMistral(topic.trim(), slideCount || 5);
+    const outline = await generateDeckOutlineWithGemini(topic.trim(), slideCount || 5);
     res.status(200).json(outline);
   } catch (err) {
     console.error("Generate outline controller error:", err);
-    res.status(500).json({ message: err.message || "Failed to generate presentation outline with Mistral AI" });
+    res.status(500).json({ message: err.message || "Failed to generate presentation outline with Gemini AI" });
   }
 }
 

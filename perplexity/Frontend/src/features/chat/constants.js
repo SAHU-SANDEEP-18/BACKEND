@@ -11,9 +11,6 @@ export const NAV_ITEMS = [
   { icon: "message", label: "Chats", key: "chats" },
   { icon: "image", label: "Images", key: "images" },
   { icon: "layout", label: "Slides", key: "slides" },
-  { icon: "compass", label: "Explore", key: "explore" },
-  { icon: "folder", label: "Files", key: "files" },
-  { icon: "plug", label: "Plugins", key: "plugins" },
 ];
 
 export const SUGGESTIONS = [

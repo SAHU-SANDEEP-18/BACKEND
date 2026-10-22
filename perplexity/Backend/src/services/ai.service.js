@@ -1,5 +1,4 @@
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-import { ChatMistralAI } from "@langchain/mistralai";
 import {
   HumanMessage,
   SystemMessage,
@@ -16,12 +15,7 @@ const geminiModel = new ChatGoogleGenerativeAI({
   apiKey: process.env.GOOGLE_GEMINI_API_KEY,
 });
 
-const mistralModel = new ChatMistralAI({
-  model: "mistral-small-latest",
-  apiKey: process.env.MISTRAL_API_KEY,
-});
-
-// Raw Tavily notes ko ek chhoti, alag Mistral-call se clean facts mein convert karte hain.
+// Raw Tavily notes ko ek chhoti, alag Gemini-call se clean facts mein convert karte hain.
 // Isse main agent ke paas kabhi raw/messy text pahunchta hi nahi — sirf clean summary jaata hai.
 async function summarizeSearchResults(query, results, answer) {
   const rawNotes = results
@@ -31,7 +25,7 @@ async function summarizeSearchResults(query, results, answer) {
   const combined = answer ? `${answer}\n\n${rawNotes}` : rawNotes;
 
   try {
-    const response = await mistralModel.invoke([
+    const response = await geminiModel.invoke([
       new SystemMessage(
         `You extract clean facts from messy web-scraped search results. ` +
         `Output the key facts relevant to the query as ONE short plain-text paragraph (2-4 sentences, no line breaks). ` +
@@ -240,24 +234,33 @@ export async function* generateResponseStream(messages, signal, chatId, customIn
 }
 
 export async function generateChatTitle(message) {
-  const response = await mistralModel.invoke([
-    new SystemMessage(`You are a creative assistant that generates short, catchy titles for chat conversations.
+  try {
+    const response = await geminiModel.invoke([
+      new SystemMessage(`You are a creative assistant that generates short, catchy titles for chat conversations.
     - Titles must be concise (2–3 words).
     - Titles should capture the main theme or intent of the user's first message.
     - Avoid generic words like "Chat" or "Conversation".
     - Prefer action-oriented or topic-specific phrasing.
     - Output only the title text, no explanations.
   `),
-    new HumanMessage(`
+      new HumanMessage(`
     First message: "${message}"
     Generate the best possible title.
   `),
-  ]);
+    ]);
 
-  return response.text;
+    const title = response.text?.trim();
+    if (title) return title;
+    throw new Error("Gemini returned an empty chat title.");
+  } catch (err) {
+    console.error("Gemini chat title generation failed; using a message-based title:", err);
+    const fallbackTitle = message.trim().replace(/\s+/g, " ");
+    if (!fallbackTitle) return "New Chat";
+    return fallbackTitle.length > 40 ? `${fallbackTitle.slice(0, 37).trimEnd()}...` : fallbackTitle;
+  }
 }
 
-export async function generateDeckOutlineWithMistral(topic, slideCount = 5) {
+export async function generateDeckOutlineWithGemini(topic, slideCount = 5) {
   const systemPrompt = `You are a professional presentation design expert.
 Generate a structured ${slideCount}-slide presentation outline about "${topic}".
 
@@ -280,7 +283,7 @@ The JSON output MUST match this exact schema:
   ]
 }`;
 
-  const response = await mistralModel.invoke([
+  const response = await geminiModel.invoke([
     new SystemMessage(systemPrompt),
     new HumanMessage(`Create a ${slideCount}-slide presentation outline for topic: "${topic}"`),
   ]);
@@ -291,11 +294,11 @@ The JSON output MUST match this exact schema:
   try {
     const data = JSON.parse(cleaned);
     if (!data.title || !Array.isArray(data.slides)) {
-      throw new Error("Invalid schema received from Mistral");
+      throw new Error("Invalid schema received from Gemini.");
     }
     return data;
   } catch (err) {
-    console.error("Mistral PPT JSON parse failed:", cleaned);
+    console.error("Gemini PPT JSON parse failed:", cleaned);
     throw new Error("Failed to generate a valid presentation outline. Please try again.");
   }
 }

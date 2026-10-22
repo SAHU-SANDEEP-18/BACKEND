@@ -34,75 +34,95 @@ export async function uploadFiles(req, res) {
 
 export async function sendMessage(req, res) {
   const { message, chat: chatId, quotedText, attachments } = req.body;
-  const io = getID();
+  const activeChatId = typeof chatId === "string" && chatId.startsWith("temp-")
+    ? null
+    : chatId || null;
+  let io;
+  let title = null;
+  let resolvedChatId = activeChatId;
+  let userMessage;
+  let pastMessages;
+  let docAttachments = [];
+  let stage = "initialize sockets";
 
-  let title = null,
-    chat = null;
-  const activeChatId = chatId || null;
+  try {
+    io = getID();
 
-  if (!activeChatId) {
-    title = await generateChatTitle(message);
-    chat = await chatModel.create({
-      user: req.user.id,
-      title: title,
+    if (!activeChatId) {
+      stage = "generate chat title";
+      title = await generateChatTitle(message);
+      stage = "create chat";
+      const chat = await chatModel.create({
+        user: req.user.id,
+        title,
+      });
+      resolvedChatId = chat._id;
+    }
+
+    // Agar existing-chat hai, confirm karo user ke paas access hai (owner ya collaborator)
+    if (activeChatId) {
+      stage = "check chat access";
+      const accessible = await hasAccess(activeChatId, req.user.id);
+      if (!accessible) {
+        return res.status(403).json({ message: "You don't have access to this chat" });
+      }
+    }
+
+    stage = "save user message";
+    userMessage = await messageModel.create({
+      chat: resolvedChatId,
+      content: message,
+      role: "user",
+      quotedText: quotedText || null,
+      attachments: attachments || [],
+    });
+
+    // PDF/DOCX attachments — pehle fully ingest (extract + embed + Pinecone upsert) karo,
+    // AI response tabhi generate hoga jab document ka data ready ho chuka ho
+    docAttachments = (attachments || []).filter((a) => a.kind === "document");
+    if (docAttachments.length > 0) {
+      io.to(`user:${req.user.id}`).emit("ai:thinking", { chatId: resolvedChatId });
+      const ingestResults = await Promise.all(
+        docAttachments.map(async (att) => {
+          try {
+            const fileRes = await fetch(att.url);
+            const arrayBuffer = await fileRes.arrayBuffer();
+            return await ingestDocument({
+              buffer: Buffer.from(arrayBuffer),
+              mimetype: att.mimeType,
+              fileName: att.name,
+              chatId: String(resolvedChatId),
+              attachmentId: att.fileId,
+            });
+          } catch (err) {
+            console.error(`Ingestion failed for ${att.name}:`, err);
+            return { chunksStored: 0 };
+          }
+        }),
+      );
+
+      // Pinecone "eventually consistent" hai — abhi-abhi upsert kiye vectors
+      // turant queryable nahi hote, unko index hone mein kuch second lagte hain.
+      // Agar kuch actually stored hua ho, thoda wait karo taaki agla retrieveContext() call
+      // in vectors ko dhoondh sake, warna AI ko empty-context milega.
+      const anyStored = ingestResults.some((r) => r.chunksStored > 0);
+      if (anyStored) {
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+      }
+    }
+
+    stage = "load chat history";
+    pastMessages = await messageModel
+      .find({ chat: resolvedChatId })
+      .select("role content quotedText attachments -_id");
+  } catch (err) {
+    console.error(`Failed to ${stage}:`, err);
+    return res.status(500).json({
+      message: process.env.NODE_ENV === "production"
+        ? "Failed to start chat message"
+        : `Failed to ${stage}: ${err.message}`,
     });
   }
-
-  const resolvedChatId = activeChatId || chat._id;
-
-  // Agar existing-chat hai, confirm karo user ke paas access hai (owner ya collaborator)
-  if (activeChatId) {
-    const accessible = await hasAccess(activeChatId, req.user.id);
-    if (!accessible) {
-      return res.status(403).json({ message: "You don't have access to this chat" });
-    }
-  }
-
-  const userMessage = await messageModel.create({
-    chat: resolvedChatId,
-    content: message,
-    role: "user",
-    quotedText: quotedText || null,
-    attachments: attachments || [],
-  });
-
-  // PDF/DOCX attachments — pehle fully ingest (extract + embed + Pinecone upsert) karo,
-  // AI response tabhi generate hoga jab document ka data ready ho chuka ho
-  const docAttachments = (attachments || []).filter((a) => a.kind === "document");
-  if (docAttachments.length > 0) {
-    io.to(`user:${req.user.id}`).emit("ai:thinking", { chatId: resolvedChatId });
-    const ingestResults = await Promise.all(
-      docAttachments.map(async (att) => {
-        try {
-          const fileRes = await fetch(att.url);
-          const arrayBuffer = await fileRes.arrayBuffer();
-          return await ingestDocument({
-            buffer: Buffer.from(arrayBuffer),
-            mimetype: att.mimeType,
-            fileName: att.name,
-            chatId: String(resolvedChatId),
-            attachmentId: att.fileId,
-          });
-        } catch (err) {
-          console.error(`Ingestion failed for ${att.name}:`, err);
-          return { chunksStored: 0 };
-        }
-      }),
-    );
-
-    // Pinecone "eventually consistent" hai — abhi-abhi upsert kiye vectors
-    // turant queryable nahi hote, unko index hone mein kuch second lagte hain.
-    // Agar kuch actually stored hua ho, thoda wait karo taaki agla retrieveContext() call
-    // in vectors ko dhoondh sake, warna AI ko empty-context milega.
-    const anyStored = ingestResults.some((r) => r.chunksStored > 0);
-    if (anyStored) {
-      await new Promise((resolve) => setTimeout(resolve, 3000));
-    }
-  }
-
-  const pastMessages = await messageModel
-    .find({ chat: resolvedChatId })
-    .select("role content quotedText attachments -_id");
 
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");

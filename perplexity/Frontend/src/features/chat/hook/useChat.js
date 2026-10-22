@@ -104,8 +104,8 @@ export const useChat = () => {
     dispatch(setLoading(true));
     dispatch(setError(null));
 
-    const isNewChat = !chatId;
-    const tempId = isNewChat ? `temp-${Date.now()}` : null;
+    const isNewChat = !chatId || (typeof chatId === "string" && chatId.startsWith("temp-"));
+    const tempId = isNewChat ? chatId || `temp-${Date.now()}` : null;
     const activeChatId = chatId || tempId;
 
     if (isNewChat) {
@@ -134,7 +134,7 @@ export const useChat = () => {
     abortControllerRef.current = controller;
 
     try {
-      await sendMessageStream({ message: trimmed, chatId, quotedText, attachments }, (event) => {
+      await sendMessageStream({ message: trimmed, chatId: isNewChat ? null : chatId, quotedText, attachments }, (event) => {
           if (event.type === "meta") {
             if (isNewChat && event.chatId) {
               dispatch(
