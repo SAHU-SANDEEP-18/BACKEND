@@ -32,7 +32,7 @@ export default defineConfig({
             handler: "NetworkOnly",
           },
         ],
-        navigateFallback: "/offline.html",
+        navigateFallback: "/index.html",
         navigateFallbackDenylist: [/^\/api\//],
       },
     }),
