@@ -1,7 +1,8 @@
 import axios from "axios";
+import { apiUrl } from "../../../config/api";
 
 const api = axios.create({
-  baseURL: "http://localhost:3000/api/decks",
+  baseURL: apiUrl("/api/decks"),
   withCredentials: true,
 });
 
@@ -30,7 +31,7 @@ export const deleteDeck = async (deckId) => {
   return response.data;
 };
 
-// ── AI-outline generation — Mistral AI via Backend ──
+// ── AI-outline generation via Backend ──
 export const generateOutline = async (topic, slideCount = 5) => {
   try {
     const response = await api.post("/generate", { topic, slideCount });

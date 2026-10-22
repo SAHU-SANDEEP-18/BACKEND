@@ -1,13 +1,14 @@
 import axios from "axios";
+import { apiUrl } from "../../../config/api";
 
 const api = axios.create({
-  baseURL: "http://localhost:3000/api/chats",
+  baseURL: apiUrl("/api/chats"),
   withCredentials: true,
 });
 
 // Streaming version — SSE response ko manually parse karta hai
 export const sendMessageStream = async ({ message, chatId, quotedText, attachments }, onEvent, signal) => {
-  const response = await fetch("http://localhost:3000/api/chats/message", {
+  const response = await fetch(apiUrl("/api/chats/message"), {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -53,7 +54,7 @@ export const sendMessageStream = async ({ message, chatId, quotedText, attachmen
 };
 
 export const regenerateMessageStream = async (chatId, onEvent, signal) => {
-  const response = await fetch(`http://localhost:3000/api/chats/${chatId}/regenerate`, {
+  const response = await fetch(apiUrl(`/api/chats/${chatId}/regenerate`), {
     method: "POST",
     credentials: "include",
     signal,
@@ -87,7 +88,7 @@ export const regenerateMessageStream = async (chatId, onEvent, signal) => {
 };
 
 export const editMessageStream = async (chatId, messageId, content, onEvent, signal) => {
-  const response = await fetch(`http://localhost:3000/api/chats/${chatId}/messages/${messageId}`, {
+  const response = await fetch(apiUrl(`/api/chats/${chatId}/messages/${messageId}`), {
     method: "PUT",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -183,7 +184,7 @@ export const revokeInviteLink = async (chatId) => {
 };
 
 export const joinViaLink = async (token) => {
-  const response = await axios.post(`http://localhost:3000/api/join/${token}`, null, {
+  const response = await axios.post(apiUrl(`/api/join/${token}`), null, {
     withCredentials: true,
   });
   return response.data; // { chatId, alreadyMember }

@@ -1,7 +1,8 @@
 import axios from "axios";
+import { apiUrl } from "../../../config/api";
 
 const api = axios.create({
-  baseURL: "http://localhost:3000/api/images",
+  baseURL: apiUrl("/api/images"),
   withCredentials: true,
 });
 

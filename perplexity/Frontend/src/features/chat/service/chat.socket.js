@@ -1,11 +1,12 @@
 import { io } from "socket.io-client";
+import { API_BASE_URL } from "../../../config/api";
 
 let socket = null;
 
 export const initializeSocketConnection = () => {
   if (socket) return socket; // already connected hai toh dobara mat banao
 
-  socket = io("http://localhost:3000", {
+  socket = io(API_BASE_URL, {
     withCredentials: true,
   });
 
